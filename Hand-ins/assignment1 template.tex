@@ -1,0 +1,45 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage}
+\usepackage{amsmath, amsfonts}
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+\begin{center}
+{{\Large \sc Algorithms for Massive Data Sets}}
+\end{center}
+\rule{\textwidth}{1pt}
+\begin{description}
+\item[Student name and id:] Xiaoshen Hou (s132732)
+\item[Collaborator name(s) and id(s):] NULL
+\item[Hand-in for week:] 1
+\end{description}
+\rule{\textwidth}{1pt}
+
+
+\section*{Exercise 1}
+
+The 2-path can be interpreted as for $\{v, u{\in}V1\}$, there are at least one node k $\{k{\in}V2\}$ linked with both v, u \\
+\noindent
+\textbf{Analysis:} \\
+Collisions between any pair of nodes from $V1$ should be avoided so that a link connected to node v $\{v{\in}V1\}$ would not be dislocated to u $\{u{\in}V1\}$ due to $H(v)=H(u)$. \\ 
+As the requirement says data structure should use $O(N^2)$ space, I decide to use a perfect $O(N^2)$-space hashing solution to hash the nodes from V1 and save in a hashtable. \\
+For the edges (neighbor nodes) shot out from each of these nodes from V1, another perfect $O(N^2)$-space hashing solution is used as the subtable aassociated with each hash value in the table above as the same way as underlying sheme in FKS solution. the hashed keys are those nodes from V2 at the other end of each edge. The total amount of hashed keys should equal to total amount of edges $m$ in graph.\\
+\textbf{Solution:} \\
+It is known space complexity in FKS is $\text{O}\left(\text{n+} \displaystyle \sum_{i}|S_i|^2 \right)$\\
+As the outter level has become a $O(N^2)$-space, then expression should become $\text{O}\left(|V1|^2+ \displaystyle \sum_{i}|S_i|^2 \right)$. Then, it equals to $\text{O}\left(|V1|^2+ \displaystyle \sum_{i}|S_i|+2\left(\begin{array}{cc}
+|S_i|\\2 
+\end{array}\right) \right)$ = $\text{O}\left(|V1|^2+ m +2m \right)$ =  $\text{O}(|V1|^2)$ (Note: $\sum_{i}|S_i|=m$) \\
+\noindent
+\begin{itemize}
+    \item 
+    Space: $O(|V1|^2)$
+    \item 
+    Query/Update time: O(1)
+\end{itemize}
+\noindent
+When the algorithm iterates through a list of hash value of nodes in V2. $|\{H(w)|w{\in}V2\}|=|V2|<m$.This requires o(m). By looking up in the multilevel hashtable, if the hash value of a node in V2 exist in both subtables of H(u),H(v) where $\{u,v{\in}V1\}$, then there is a 2-path between u and v
+
+\section*{Exercise 2}
+
+
+\end{document}
