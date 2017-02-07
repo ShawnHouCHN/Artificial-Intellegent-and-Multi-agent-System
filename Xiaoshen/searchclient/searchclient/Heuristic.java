@@ -5,12 +5,47 @@ import java.util.Comparator;
 import searchclient.NotImplementedException;
 
 public abstract class Heuristic implements Comparator<Node> {
+	
 	public Heuristic(Node initialState) {
 		// Here's a chance to pre-process the static parts of the level.
 	}
 
 	public int h(Node n) {
-		throw new NotImplementedException();
+		
+		int totalDistance = 0;
+		int minDist = 0;
+		
+		// Get box
+		for(int i = 1; i < n.MAX_ROW - 1; i++) {
+			// Get row
+			for(int j = 1; j < n.MAX_COL - 1; j++) {
+				// Get column
+				
+				char box = n.boxes[i][j];
+				
+				if('A' <= box && box <= 'Z') {
+					minDist = Integer.MAX_VALUE;
+					
+					box = Character.toLowerCase(box);
+					
+					for(int k = 1; k < n.MAX_ROW - 1; k++) {
+						for(int l = 1; l < n.MAX_COL - 1; l++) {
+							char goal = n.goals[k][l];
+							if('a' <= goal && goal <= 'z' && box == goal) {
+								int row = i - k;
+								int col = j - l;
+								
+								minDist = Math.min((Math.abs(row) + Math.abs(col)), minDist);
+							}
+						}
+					}
+					
+					totalDistance += minDist;
+				}
+			}
+		}
+
+		return totalDistance;
 	}
 
 	public abstract int f(Node n);
