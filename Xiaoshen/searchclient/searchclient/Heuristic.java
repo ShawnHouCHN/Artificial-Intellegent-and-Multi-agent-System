@@ -1,6 +1,10 @@
 package searchclient;
 
+import java.awt.Point;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.PriorityQueue;
+import java.util.TreeMap;
 
 import searchclient.NotImplementedException;
 
@@ -13,38 +17,38 @@ public abstract class Heuristic implements Comparator<Node> {
 	public int h(Node n) {
 		
 		int totalDistance = 0;
-		int minDist = 0;
-		
+		int agentrow = n.agentRow;
+		int agentcol = n.agentCol;
+		Point cloestbox=new Point();
+		Point cloestgoal=new Point();
+		TreeMap<Integer,Point> boxes_tree=new TreeMap<Integer,Point>();
+		TreeMap<Integer,Point> goals_tree=new TreeMap<Integer,Point>();
 		// Get box
-		for(int i = 1; i < n.MAX_ROW - 1; i++) {
+		for(int i = 1; i < n.boxes.length - 1; i++) {
 			// Get row
-			for(int j = 1; j < n.MAX_COL - 1; j++) {
+			for(int j = 1; j < n.boxes[0].length - 1; j++) {
 				// Get column
+				if(n.boxes[i][j]!=0){
+					cloestbox.setLocation(i, j);
+					boxes_tree.put(Math.abs((i-agentrow)+(j-agentcol)),cloestbox);
+				}
 				
-				char box = n.boxes[i][j];
-				
-				if('A' <= box && box <= 'Z') {
-					minDist = Integer.MAX_VALUE;
-					
-					box = Character.toLowerCase(box);
-					
-					for(int k = 1; k < n.MAX_ROW - 1; k++) {
-						for(int l = 1; l < n.MAX_COL - 1; l++) {
-							char goal = n.goals[k][l];
-							if('a' <= goal && goal <= 'z' && box == goal) {
-								int row = i - k;
-								int col = j - l;
-								
-								minDist = Math.min((Math.abs(row) + Math.abs(col)), minDist);
-							}
-						}
-					}
-					
-					totalDistance += minDist;
+			}
+		}
+		
+		cloestbox=boxes_tree.firstEntry().getValue();
+		
+		for(int i = 1; i < n.boxes.length - 1; i++) {
+			for(int j = 1; j < n.boxes[0].length - 1; j++) {
+				if(n.goals[i][j]!=0){
+					cloestgoal.setLocation(i, j);
+					goals_tree.put((int)Math.abs((cloestbox.getX()-i)+(cloestbox.getY()-j)),cloestgoal);
 				}
 			}
 		}
-
+		
+		cloestgoal=goals_tree.firstEntry().getValue();
+		totalDistance=boxes_tree.firstKey()+goals_tree.firstKey();
 		return totalDistance;
 	}
 
