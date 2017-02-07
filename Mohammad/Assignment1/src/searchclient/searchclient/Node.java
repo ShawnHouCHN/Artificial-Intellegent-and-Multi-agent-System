@@ -27,10 +27,12 @@ public class Node {
 	// this.walls[row][col] is true if there's a wall at (row, col)
 	//
 
-	public boolean[][] walls = new boolean[MAX_ROW][MAX_COL];
-	public char[][] boxes = new char[MAX_ROW][MAX_COL];
-	public char[][] goals = new char[MAX_ROW][MAX_COL];
-
+	//public boolean[][] walls = new boolean[MAX_ROW][MAX_COL];
+	//public char[][] boxes = new char[MAX_ROW][MAX_COL];
+	//public char[][] goals = new char[MAX_ROW][MAX_COL];
+	public boolean[][] walls;
+	public char[][] boxes;
+	public char[][] goals;
 	public Node parent;
 	public Command action;
 
@@ -44,7 +46,26 @@ public class Node {
 			this.g = 0;
 		} else {
 			this.g = parent.g() + 1;
+			this.walls = parent.walls;
+			this.goals = parent.goals;
+			this.boxes = new char[parent.boxes.length][parent.boxes[0].length];
 		}
+
+	}
+	
+	public Node(Node parent,boolean[][] walls,char[][] boxes,char[][] goals,int agentRow, int agentCol ) {
+
+		if (parent == null) {
+			this.g = 0;
+		} else {
+			this.g = parent.g() + 1;
+		}
+		this.parent = parent;
+		this.walls = walls;
+		this.boxes = boxes;
+		this.goals = goals;
+		this.agentRow = agentRow;
+		this.agentCol = agentCol;
 	}
 
 	public int g() {
@@ -56,8 +77,8 @@ public class Node {
 	}
 
 	public boolean isGoalState() {
-		for (int row = 1; row < MAX_ROW - 1; row++) {
-			for (int col = 1; col < MAX_COL - 1; col++) {
+		for (int row = 1; row < this.goals.length - 1; row++) {
+			for (int col = 1; col < this.goals[0].length - 1; col++) {
 				char g = goals[row][col];
 				char b = Character.toLowerCase(boxes[row][col]);
 				if (g > 0 && b != g) {
@@ -78,10 +99,11 @@ public class Node {
 			if (c.actionType == Type.Move) {
 				// Check if there's a wall or box on the cell to which the agent is moving
 				if (this.cellIsFree(newAgentRow, newAgentCol)) {
-					Node n = this.ChildNode();
+					Node n = new Node(this);
 					n.action = c;
 					n.agentRow = newAgentRow;
 					n.agentCol = newAgentCol;
+					n.boxes = this.boxes;
 					expandedNodes.add(n);
 				}
 			} else if (c.actionType == Type.Push) {
@@ -95,6 +117,7 @@ public class Node {
 						n.action = c;
 						n.agentRow = newAgentRow;
 						n.agentCol = newAgentCol;
+						//System.arraycopy( this.boxes, 0, n.boxes, 0, this.boxes.length );
 						n.boxes[newBoxRow][newBoxCol] = this.boxes[newAgentRow][newAgentCol];
 						n.boxes[newAgentRow][newAgentCol] = 0;
 						expandedNodes.add(n);
@@ -111,6 +134,7 @@ public class Node {
 						n.action = c;
 						n.agentRow = newAgentRow;
 						n.agentCol = newAgentCol;
+						//System.arraycopy( this.boxes, 0, n.boxes, 0, this.boxes.length );
 						n.boxes[this.agentRow][this.agentCol] = this.boxes[boxRow][boxCol];
 						n.boxes[boxRow][boxCol] = 0;
 						expandedNodes.add(n);
@@ -132,10 +156,8 @@ public class Node {
 
 	private Node ChildNode() {
 		Node copy = new Node(this);
-		for (int row = 0; row < MAX_ROW; row++) {
-			System.arraycopy(this.walls[row], 0, copy.walls[row], 0, MAX_COL);
-			System.arraycopy(this.boxes[row], 0, copy.boxes[row], 0, MAX_COL);
-			System.arraycopy(this.goals[row], 0, copy.goals[row], 0, MAX_COL);
+		for (int row = 0; row < this.goals.length; row++) {
+			System.arraycopy(this.boxes[row], 0, copy.boxes[row], 0, this.goals[0].length);
 		}
 		return copy;
 	}
@@ -188,11 +210,11 @@ public class Node {
 	@Override
 	public String toString() {
 		StringBuilder s = new StringBuilder();
-		for (int row = 0; row < MAX_ROW; row++) {
+		for (int row = 0; row < this.goals.length; row++) {
 			if (!this.walls[row][0]) {
 				break;
 			}
-			for (int col = 0; col < MAX_COL; col++) {
+			for (int col = 0; col < this.goals[0].length; col++) {
 				if (this.boxes[row][col] > 0) {
 					s.append(this.boxes[row][col]);
 				} else if (this.goals[row][col] > 0) {

@@ -1,9 +1,10 @@
 package searchclient;
 
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Stack;
 import java.util.PriorityQueue;
+import java.util.Stack;
 
 import searchclient.Memory;
 import searchclient.NotImplementedException;
@@ -30,7 +31,7 @@ public abstract class Strategy {
 	}
 
 	public String searchStatus() {
-		return String.format("#Explored: %,6d, #Frontier: %,6d, #Generated: %,6d, Time: %3.2f s \t%s", this.countExplored(), this.countFrontier(), this.countExplored()+this.countFrontier(), this.timeSpent(), Memory.stringRep());
+		return String.format("#Explored: %6d, #Frontier: %6d, #Generated: %6d, Time: %3.2f s \t%s", this.countExplored(), this.countFrontier(), this.countExplored()+this.countFrontier(), this.timeSpent(), Memory.stringRep());
 	}
 
 	public float timeSpent() {
@@ -96,26 +97,25 @@ public abstract class Strategy {
 
 	public static class StrategyDFS extends Strategy {
 		private Stack<Node> frontier;
-		//private HashSet<Node> frontierSet;
+		private HashSet<Node> frontierSet;
 
 		public StrategyDFS() {
 			super();
 			frontier = new Stack<Node>();
-			//frontierSet = new HashSet<Node>();
+			frontierSet = new HashSet<Node>();
 		}
 
 		@Override
 		public Node getAndRemoveLeaf() {
-			//Node n = frontier.pop();
-			//frontierSet.remove(n);
-			//return n;
-			return frontier.pop();
+			Node n = frontier.pop();
+			frontierSet.remove(n);
+			return n;
 		}
 
 		@Override
 		public void addToFrontier(Node n) {
-			//frontierSet.add(n);
-			frontier.push(n);
+			frontier.add(n);
+			frontierSet.add(n);
 		}
 
 		@Override
@@ -130,8 +130,7 @@ public abstract class Strategy {
 
 		@Override
 		public boolean inFrontier(Node n) {
-			//return frontierSet.contains(n);
-			return frontier.contains(n);
+			return frontierSet.contains(n);
 		}
 
 		@Override
@@ -144,23 +143,27 @@ public abstract class Strategy {
 	public static class StrategyBestFirst extends Strategy {
 		private Heuristic heuristic;
 		private PriorityQueue<Node> frontier;
+		private HashSet<Node> frontierSet;
 
 		public StrategyBestFirst(Heuristic h) {
 			super();
 			this.heuristic = h;
-			frontier = new PriorityQueue<Node>(10, heuristic);
+			frontier = new PriorityQueue<Node>(this.heuristic);
+			frontierSet = new HashSet<Node>();
 		}
+		
 
 		@Override
 		public Node getAndRemoveLeaf() {
-			// Get and remove head of queue.
-			return frontier.poll();
+			Node n = frontier.poll();
+			frontierSet.remove(n);
+			return n;
 		}
 
 		@Override
 		public void addToFrontier(Node n) {
-			// Insert element
-			frontier.offer(n);
+			frontier.add(n);
+			frontierSet.add(n);
 		}
 
 		@Override
@@ -175,12 +178,12 @@ public abstract class Strategy {
 
 		@Override
 		public boolean inFrontier(Node n) {
-			return frontier.contains(n);
+			return frontierSet.contains(n);
 		}
 
 		@Override
 		public String toString() {
-			return "Best-first Search using " + this.heuristic.toString();
+			return "Best-first Search (PriorityQueue) using " + this.heuristic.toString();
 		}
 	}
 }

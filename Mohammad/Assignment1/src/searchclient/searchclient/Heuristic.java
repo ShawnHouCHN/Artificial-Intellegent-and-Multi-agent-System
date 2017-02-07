@@ -6,61 +6,44 @@ import searchclient.NotImplementedException;
 
 public abstract class Heuristic implements Comparator<Node> {
 	
-	public Node initialState;
-	
 	public Heuristic(Node initialState) {
 		// Here's a chance to pre-process the static parts of the level.
-
-		this.initialState = initialState;
 	}
 
 	public int h(Node n) {
-		// Implementing Manhattan Distance:
-		/*
-		URL: http://theory.stanford.edu/~amitp/GameProgramming/Heuristics.html
-
-			function heuristic(node) =
-    			dx = abs(node.x - goal.x)
-    			dy = abs(node.y - goal.y)
-    			return D * (dx + dy)
-		*/
 		
 		int totalDistance = 0;
-		int minDist = 0;
+		int minDist = Integer.MAX_VALUE;
 		
 		// Get box
-		for(int i = 1; i < n.MAX_ROW - 1; i++) {
+		for(int i = 1; i < n.boxes.length - 1; i++) {
 			// Get row
-			for(int j = 1; j < n.MAX_COL - 1; j++) {
+			for(int j = 1; j < n.boxes[0].length - 1; j++) {
 				// Get column
-				
 				char box = n.boxes[i][j];
 				
-				if('A' <= box && box <= 'Z') {
-					minDist = Integer.MAX_VALUE;
-					
+				if(box >= 'A' && box <= 'Z') {
 					box = Character.toLowerCase(box);
 					
-					for(int k = 1; k < n.MAX_ROW - 1; k++) {
-						for(int l = 1; l < n.MAX_COL - 1; l++) {
+					for(int k = 1; k < n.boxes.length - 1; k++) {
+						for(int l = 1; l < n.boxes[0].length - 1; l++) {
 							char goal = n.goals[k][l];
-							if('a' <= goal && goal <= 'z' && box == goal) {
-								int row = i - k;
-								int col = j - l;
+							if(box == goal && goal >= 'a' && goal <= 'z') {
+								int row = Math.abs(i - k);
+								int col = Math.abs(j - l);
+								int temp = row + col;
 								
-								minDist = Math.min((Math.abs(row) + Math.abs(col)), minDist);
+								minDist = Math.min(temp, minDist);
 							}
 						}
 					}
 					
 					totalDistance += minDist;
+					minDist = Integer.MAX_VALUE;
 				}
 			}
 		}
 
-    	//int dx = Math.abs(n.agentRow - getPositionX);
-    	//int dy = Math.abs(n.agentCol - getPositionY);
-		
 		return totalDistance;
 	}
 
@@ -68,7 +51,7 @@ public abstract class Heuristic implements Comparator<Node> {
 
 	@Override
 	public int compare(Node n1, Node n2) {
-		return f(n1) - f(n2);
+		return this.f(n1) - this.f(n2);
 	}
 
 	public static class AStar extends Heuristic {
