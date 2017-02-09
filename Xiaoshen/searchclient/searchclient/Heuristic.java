@@ -40,7 +40,7 @@ public abstract class Heuristic implements Comparator<Node> {
 		
 		for(int i = 1; i < n.boxes.length - 1; i++) {
 			for(int j = 1; j < n.boxes[0].length - 1; j++) {
-				if(n.goals[i][j]!=0){
+				if(n.goals[i][j]!=0 && n.goals[i][j]==Character.toLowerCase(n.boxes[cloestbox.x][cloestbox.y])){
 					cloestgoal.setLocation(i, j);
 					goals_tree.put((int)Math.abs((cloestbox.getX()-i)+(cloestbox.getY()-j)),cloestgoal);
 				}
