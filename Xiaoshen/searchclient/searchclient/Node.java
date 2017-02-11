@@ -35,7 +35,6 @@ public class Node {
 	public char[][] goals;
 	public Node parent;
 	public Command action;
-	
 
 	private int g;
 	

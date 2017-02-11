@@ -13,6 +13,7 @@ import searchclient.NotImplementedException;
 public abstract class Heuristic implements Comparator<Node> {
 	
 	HashMap<Point,Character> goallist;
+	char[][] initboxes;
 	public Heuristic(Node initialState) {
 		// Here's a chance to pre-process the static parts of the level.
 		this.goallist= new HashMap<Point, Character>();
@@ -23,15 +24,29 @@ public abstract class Heuristic implements Comparator<Node> {
 				}
 			}
 		}
+		
+		this.initboxes=initialState.boxes;
+		
+		
+		
 	}
 
 	public int h(Node n) {
 		
-		int totalDistance = 0;
 		int agentrow = n.agentRow;
 		int agentcol = n.agentCol;
 		char[] cloestbox;
 		TreeMap<Integer,char[]> boxes_tree=new TreeMap<Integer,char[]>();
+		
+		
+		Entry<Integer,char[]> abox;
+		int distance=0;
+		int comdistance=0;
+		int sumdistance=0;
+		
+		//if(n.boxes.equals(this.initboxes)){
+		//	sumdistance=sumdistance+100;
+		//}
 		
 		// Get box
 		for(int i = 1; i < n.boxes.length - 1; i++) {
@@ -40,9 +55,10 @@ public abstract class Heuristic implements Comparator<Node> {
 				// Get column
 				if(n.boxes[i][j]!=0){
 					Point currentbox=new Point(i,j);
-					if (goallist.get(currentbox)!=null && goallist.get(currentbox)==n.boxes[i][j])
+					if (goallist.get(currentbox)!=null && goallist.get(currentbox)==n.boxes[i][j]){
 						goallist.remove(currentbox);
-					else
+						sumdistance=sumdistance-100;
+					}else
 					{
 						cloestbox=new char[3];
 						cloestbox[0]=(char)i;
@@ -56,11 +72,6 @@ public abstract class Heuristic implements Comparator<Node> {
 		}
 		
 
-		
-		Entry<Integer,char[]> abox;
-		int distance=0;
-		int comdistance=0;
-		int sumdistance=0;
 		while(!boxes_tree.isEmpty()){
 			abox=boxes_tree.pollFirstEntry();
 			PriorityQueue<Integer> dis_to_goals=new PriorityQueue<Integer>();
@@ -70,11 +81,11 @@ public abstract class Heuristic implements Comparator<Node> {
 					dis_to_goals.add(distance);
 				}
 			}
-			comdistance=dis_to_goals.poll()+abox.getKey();
+			comdistance=dis_to_goals.poll();
 			sumdistance=sumdistance+comdistance;
 		}
 		
-		return sumdistance;
+		return comdistance;
 	}
 
 	public abstract int f(Node n);
