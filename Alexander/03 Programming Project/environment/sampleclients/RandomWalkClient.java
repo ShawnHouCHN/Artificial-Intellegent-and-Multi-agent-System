@@ -15,7 +15,7 @@ public class RandomWalkClient {
 		String color;
 		int[] location;
 		public List< Goal > myGoals = new ArrayList< Goal >();
-	    public List< Box > myBoxes = new ArrayList< Box >();
+		public List< Box > myBoxes = new ArrayList< Box >();
 		public Agent( char id, String color , int[] location) {
 			System.err.println("Found " + color + " agent " + id + " Location " + location[0]+","+location[1]);
 			this.id = id;
