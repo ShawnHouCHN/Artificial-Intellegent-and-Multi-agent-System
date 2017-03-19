@@ -5,10 +5,22 @@ import java.util.*;
 
 public class RandomWalkClient {
 	private static Random rand = new Random();
+	private BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
+	public List< Agent > agents = new ArrayList< Agent >();
+	public List< Goal > goals = new ArrayList< Goal >();
+	public List< Box > boxes = new ArrayList< Box >();
 
 	public class Agent {
-		public Agent( char id, String color , String location) {
-			System.err.println("Found " + color + " agent " + id );
+		char id;
+		String color;
+		int[] location;
+		public List< Goal > myGoals = new ArrayList< Goal >();
+	    public List< Box > myBoxes = new ArrayList< Box >();
+		public Agent( char id, String color , int[] location) {
+			System.err.println("Found " + color + " agent " + id + " Location " + location[0]+","+location[1]);
+			this.id = id;
+			this.color=color;
+			this.location=location;
 		}
 
 		public String act() {
@@ -16,10 +28,61 @@ public class RandomWalkClient {
 			System.err.println(Command.every[randomN].toString());
 			return "NoOp";
 		}
-	}
 
-	private BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
-	private List< Agent > agents = new ArrayList< Agent >();
+		public void findMyGoals(List< Goal > goals){
+			for (int i = 0; i < goals.size(); i++){
+				if(goals.get(i).color.equals(this.color)){
+					myGoals.add(goals.get(i));
+				}
+			}
+		}
+		public void findMyBoxes(List< Box > boxes){
+			for (int i = 0; i < boxes.size(); i++){
+				if(boxes.get(i).color.equals(this.color)){
+					myBoxes.add(boxes.get(i));
+				}
+			}
+		}
+		public String printMyBoxes(){
+			String s="";
+			for(int i=0; i<myBoxes.size();i++){
+				s+=myBoxes.get(i).id+"\n";
+			}
+			System.err.println("my ID: "+id+" my boxes: "+s);
+			return s;
+		}
+		public String printMyGoals(){
+			String s="";
+			for(int i=0; i<myGoals.size();i++){
+				s+=myGoals.get(i).id+"\n";
+			}
+			System.err.println("my ID: "+id+" my goals: "+s);
+			return s;
+		} 
+	}
+	public class Goal{
+		char id;
+		String color;
+		int[] location;
+
+		public Goal( char id, String color , int[] location) {
+			System.err.println("Found " + color + " Goal " + id + " Location " + location[0]+","+location[1]);
+			this.id = id;
+			this.color=color;
+			this.location=location;
+		}
+	}
+	public class Box{
+		char id;
+		String color;
+		int[] location;
+		public Box( char id, String color , int[] location) {
+			System.err.println("Found " + color + " Box " + id + " Location " + location[0]+","+location[1]);
+			this.id = id;
+			this.color=color;
+			this.location=location;
+		}
+	}
 
 	public RandomWalkClient() throws IOException {
 		readMap();
@@ -43,12 +106,28 @@ public class RandomWalkClient {
 		while ( !line.equals( "" ) ) {
 			for ( int i = 0; i < line.length(); i++ ) {
 				char id = line.charAt( i );
-				if ( '0' <= id && id <= '9' )
-					agents.add( new Agent( id, colors.get( id ) ) );
+				if ( '0' <= id && id <= '9' ){
+					agents.add( new Agent(id, colors.get(id),new int[]{i,lineN}));
+				}
+				else if(Character.isLowerCase(id)){
+					System.err.println("Found Goal "+id);
+					goals.add( new Goal(id, colors.get(Character.toUpperCase(id)),new int[]{i,lineN}));
+
+				}
+				else if (Character.isUpperCase(id)){
+					boxes.add( new Box(id, colors.get(id),new int[]{i,lineN}));
+				}
 			}
 
 			line = in.readLine();
 			lineN++;
+
+		}
+		for (int i = 0; i<agents.size(); i++){
+			agents.get(i).findMyBoxes(boxes);
+			agents.get(i).printMyBoxes();
+			agents.get(i).findMyGoals(goals);
+			agents.get(i).printMyGoals();
 
 		}
 	}
