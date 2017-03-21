@@ -10,8 +10,10 @@ public class RandomWalkClient {
 	public List< Agent > agents = new ArrayList< Agent >();
 	public List< Goal > goals = new ArrayList< Goal >();
 	public List< Box > boxes = new ArrayList< Box >();
-	//public HashMap<String,Vertex> dij_graph=new HashMap<String,Vertex>();
-	
+	public HashMap<String,Vertex> dij_graph=new HashMap<String,Vertex>();
+	boolean[][] walls=null;
+	boolean[][] frees=null;
+	Grid grid=null; //this is the grid to save all distance between any pair of locations 
 	//agent class 
 	public class Agent {
 		char id;
@@ -111,8 +113,8 @@ public class RandomWalkClient {
 		
 		//compute the dimension of the level file in the first place.
 		int[] dimension=this.getLevelDimension(in);
-		boolean[][] walls = new boolean[dimension[0]][dimension[1]];
-		boolean[][] frees = new boolean[dimension[0]][dimension[1]]; //pesudo free cell, everywhere other than walls
+		walls = new boolean[dimension[0]][dimension[1]];
+		frees = new boolean[dimension[0]][dimension[1]]; //pesudo free cell, everywhere other than walls
 		//char[][] goals = new char[dimension[0]][dimension[1]];
 		/*****************************************************************/
 		
@@ -172,6 +174,8 @@ public class RandomWalkClient {
 			agents.get(i).printMyGoals();
 
 		}
+		
+		createDistanceMap(); // creat distance map between every pair of locations in the level file.
 	}
 
 	public boolean update() throws IOException {
@@ -195,6 +199,51 @@ public class RandomWalkClient {
 			return false;
 
 		return true;
+	}
+	
+	public void createDistanceMap(){
+		//Put all free cells into a map
+		for (int frow = 1; frow < frees.length-1; frow++) {
+			for (int fcol = 1; fcol < frees[0].length-1; fcol++) {
+				if(frees[frow][fcol]){
+					//do dijkstra mapping below
+					Vertex dj_vertex= new Vertex(frow,fcol);
+					//four directions
+					if(!dij_graph.containsKey(dj_vertex.toString())){
+						dij_graph.put(dj_vertex.toString(), dj_vertex);	
+						Vertex dj_adj_vertex;
+						if (frees[frow-1][fcol]){
+							dj_adj_vertex = new Vertex(frow-1,fcol);
+							dj_vertex.setEdge(dj_adj_vertex);
+							//dij_graph.get(dj_vertex).add(dj_adj_vertex);
+						}
+						if (frees[frow+1][fcol]){
+							dj_adj_vertex = new Vertex(frow+1,fcol);
+							dj_vertex.setEdge(dj_adj_vertex);
+							//dij_graphdj_adj_vertex);
+						}
+						if (frees[frow][fcol-1]){
+							dj_adj_vertex = new Vertex(frow,fcol-1);
+							dj_vertex.setEdge(dj_adj_vertex);
+							//dij_graph.get(dj_vertex).add(dj_adj_vertex);
+						}
+						if (frees[frow][fcol+1]){
+							dj_adj_vertex = new Vertex(frow,fcol+1);
+							dj_vertex.setEdge(dj_adj_vertex);
+						}
+						
+										
+					}
+				
+				}
+			}
+		}
+		
+		//do dijkstra computation
+		Grid grid= new Grid(dij_graph);
+		grid.BFSMapping();
+		System.err.format("This distance is "+Grid.matrix.get("1,3,3,2")+"\n");
+		
 	}
 	
 	public int[] getLevelDimension(BufferedReader serverMessages) throws IOException{
