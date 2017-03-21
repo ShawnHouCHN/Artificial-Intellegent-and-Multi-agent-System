@@ -89,6 +89,11 @@ public class RandomWalkClient {
 	}
 
 	private void readMap() throws IOException {
+		int[] dimension=this.getLevelDimension(in);
+		//find the longest row and column logic
+		boolean[][] walls = new boolean[dimension[0]][dimension[1]];
+		boolean[][] frees = new boolean[dimension[0]][dimension[1]]; //everywhere other than walls
+
 		Map< Character, String > colors = new HashMap< Character, String >();
 		String line, color;
 
@@ -106,16 +111,26 @@ public class RandomWalkClient {
 		while ( !line.equals( "" ) ) {
 			for ( int i = 0; i < line.length(); i++ ) {
 				char id = line.charAt( i );
-				if ( '0' <= id && id <= '9' ){
-					agents.add( new Agent(id, colors.get(id),new int[]{i,lineN}));
+
+				if (id == '+') { // Wall.
+					walls[lineN][i] = true;  //lineN is row, i is column;
+				} 
+				else if ( '0' <= id && id <= '9' ){
+					agents.add( new Agent(id, colors.get(id),new int[]{lineN,i}));
+
+					frees[lineN][i] = true;
 				}
 				else if(Character.isLowerCase(id)){
 					System.err.println("Found Goal "+id);
-					goals.add( new Goal(id, colors.get(Character.toUpperCase(id)),new int[]{i,lineN}));
+					goals.add( new Goal(id, colors.get(Character.toUpperCase(id)),new int[]{lineN,i}));
+
+					frees[lineN][i] = true;
 
 				}
 				else if (Character.isUpperCase(id)){
-					boxes.add( new Box(id, colors.get(id),new int[]{i,lineN}));
+					boxes.add( new Box(id, colors.get(id),new int[]{lineN,i}));
+
+					frees[lineN][i] = true;
 				}
 			}
 
@@ -154,7 +169,22 @@ public class RandomWalkClient {
 
 		return true;
 	}
-
+	public int[] getLevelDimension(BufferedReader serverMessages) throws IOException{
+		int longest=0, row=0, line_length=0;
+		serverMessages.mark(10000);
+		String line = serverMessages.readLine();
+		while (!line.equals("")) {
+			line = serverMessages.readLine();
+			line_length=line.length();
+			if (line_length>=longest){
+				longest=line_length;
+			}
+			row++;
+		}
+		int[] dimension={row,longest};
+		serverMessages.reset();
+		return dimension;	
+	}
 	public static void main( String[] args ) {
 
 		// Use stderr to print to console
