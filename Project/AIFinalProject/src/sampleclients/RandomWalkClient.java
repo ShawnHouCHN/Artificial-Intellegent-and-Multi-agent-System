@@ -13,7 +13,7 @@ public class RandomWalkClient {
 	public HashMap<String,Vertex> dij_graph=new HashMap<String,Vertex>();
 	boolean[][] walls=null;
 	boolean[][] frees=null;
-	Grid grid=null; //this is the grid to save all distance between any pair of locations 
+	public static Grid grid=null; //this is the grid to save all distance between any pair of locations 
 	//agent class 
 	public class Agent {
 		char id;
@@ -157,6 +157,11 @@ public class RandomWalkClient {
 					System.err.println("Found box "+id);
 					boxes.add( new Box(id, colors.get(id),new int[]{lineN,i}));
 					frees[lineN][i] = true;
+				}else if (id == ' ') {
+					frees[lineN][i] = true;
+				}else{
+					System.err.println("Error, read invalid level character: " + (int) i);
+					System.exit(1);
 				}
 			}
 
@@ -176,6 +181,8 @@ public class RandomWalkClient {
 		}
 		
 		createDistanceMap(); // creat distance map between every pair of locations in the level file.
+		System.err.format("This distance is "+Grid.matrix.get("1,3,2,2")+"\n");
+	
 	}
 
 	public boolean update() throws IOException {
@@ -240,9 +247,8 @@ public class RandomWalkClient {
 		}
 		
 		//do dijkstra computation
-		Grid grid= new Grid(dij_graph);
+		grid= new Grid(dij_graph);
 		grid.BFSMapping();
-		System.err.format("This distance is "+Grid.matrix.get("1,3,3,2")+"\n");
 		
 	}
 	
