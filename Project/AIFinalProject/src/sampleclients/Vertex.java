@@ -3,6 +3,7 @@ package sampleclients;
 import java.util.ArrayList;
 
 public class Vertex {
+	public static int MAX_ROW = 70;
     final public int x;
     final public int y;
     private ArrayList<Vertex> edges;
@@ -58,7 +59,7 @@ public class Vertex {
 
 
     public int hashCode() {
-        return new Integer(x + "0" + y);
+        return ((x + y)*(x + y + 1))/2 + y;
     }
     
     public String toString(){

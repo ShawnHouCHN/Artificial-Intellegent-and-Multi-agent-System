@@ -10,7 +10,7 @@ public class RandomWalkClient {
 	public List< Agent > agents = new ArrayList< Agent >();
 	public List< Goal > goals = new ArrayList< Goal >();
 	public List< Box > boxes = new ArrayList< Box >();
-	public HashMap<String,Vertex> dij_graph=new HashMap<String,Vertex>();
+	public HashMap<Integer,Vertex> dij_graph=new HashMap<Integer,Vertex>();
 	boolean[][] walls=null;
 	boolean[][] frees=null;
 	public static Grid grid=null; //this is the grid to save all distance between any pair of locations 
@@ -180,8 +180,13 @@ public class RandomWalkClient {
 
 		}
 		
+		
+		/*****************************************************************/
 		createDistanceMap(); // creat distance map between every pair of locations in the level file.
-		System.err.format("This distance is "+Grid.matrix.get("1,3,2,2")+"\n");
+		//for test purpose
+		Vertex testa=new Vertex(1,3);
+		Vertex testb=new Vertex(3,19);
+		System.err.format("**************** This distance is "+Grid.matrix.get(Grid.pairSourceTarget(testa.hashCode(), testb.hashCode()))+"\n");
 	
 	}
 
@@ -216,8 +221,8 @@ public class RandomWalkClient {
 					//do dijkstra mapping below
 					Vertex dj_vertex= new Vertex(frow,fcol);
 					//four directions
-					if(!dij_graph.containsKey(dj_vertex.toString())){
-						dij_graph.put(dj_vertex.toString(), dj_vertex);	
+					if(!dij_graph.containsKey(dj_vertex.hashCode())){
+						dij_graph.put(dj_vertex.hashCode(), dj_vertex);	
 						Vertex dj_adj_vertex;
 						if (frees[frow-1][fcol]){
 							dj_adj_vertex = new Vertex(frow-1,fcol);
