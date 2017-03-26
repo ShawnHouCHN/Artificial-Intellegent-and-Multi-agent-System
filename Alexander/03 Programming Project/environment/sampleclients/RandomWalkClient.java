@@ -26,8 +26,21 @@ public class RandomWalkClient {
 		public String act() {
 			int randomN = rand.nextInt( Command.every.length );
 			System.err.println(Command.every[randomN].toString());
-			return "NoOp";
+			return Command.every[randomN].toString();
 		}
+
+		/*
+		public String createPlan(){
+			-For all Goals, find closest through heuristic distance map
+			-Make a pop plan from the closest goal to the agent, using the heuristic distance map to help make decisions
+
+			*-*broadcast plan
+
+			*-*make neccesary conflict resolution
+
+			-run plan
+		}
+		*/
 
 		public void findMyGoals(List< Goal > goals){
 			for (int i = 0; i < goals.size(); i++){
