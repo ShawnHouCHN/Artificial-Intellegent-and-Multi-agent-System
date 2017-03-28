@@ -15,7 +15,11 @@ public class RandomWalkClient {
 	boolean[][] frees=null;
 	public static Grid grid=null; //this is the grid to save all distance between any pair of locations 
 	//agent class 
+
 	public class Agent {
+		Box currentBox;
+		Goal currentGoal;
+		int currentDist = Integer.MAX_VALUE;
 		char id;
 		String color;
 		int[] location;
@@ -64,6 +68,73 @@ public class RandomWalkClient {
 			System.err.println("my ID: "+id+" my goals: "+s);
 			return s;
 		} 
+		
+		public int createPlan(){
+			//For all Goals, find closest through heuristic distance map
+			for(Goal goal: myGoals){
+				for(Box box: myBoxes){
+					int dist1= getDisance(box.location,goal.location);
+					int dist2= getDisance(box.location,this.location);
+					if(dist1!=0 && dist1+dist2 < currentDist){
+						currentDist = dist1+dist2;
+						currentGoal = goal;
+						currentBox = box;
+					}
+				}
+				Finish: isBoxOnGoal
+				Start: agentlocation, boxlocation
+
+
+			}
+			//Make a pop plan from the closest goal to the agent, using the heuristic distance map to help make decisions
+			
+/*
+
+non-deterministic procedure PartialOrderPlanner(Gs) 
+2:           Inputs
+3:                     Gs: set of atomic propositions to achieve 
+4:           Output
+5:                     linear plan to achieve Gs 
+6:           Local
+7:                     Agenda: set of ⟨P,A⟩ pairs where P is atom and A an action 
+8:                     Actions: set of actions in the current plan 
+9:                     Constraints: set of temporal constraints on actions 
+10:                     CausalLinks: set of ⟨act0,P,act1⟩ triples 
+11:           Agenda ←{⟨G,finish⟩:G ∈Gs} 
+12:           Actions ←{start,finish} 
+13:           Constraints ←{start<finish} 
+14:           CausalLinks ←{} 
+15:           repeat 
+16:                     select and remove ⟨G,act1⟩ from Agenda 
+17:                     either
+18:                               choose act0 ∈Actions such that act0 achieves G 
+19:                     or
+20:                               choose act0 ∉Actions such that act0 achieves G 
+21:                               Actions ←Actions ∪{act0} 
+22:                               Constraints ←add_const(start<act0,Constraints) 
+23:                               for each CL∈CausalLinks do 
+24:                                         Constraints ←protect(CL,act0,Constraints) 
+25:                               
+26:                               Agenda ←Agenda ∪{⟨P,act0⟩: P is a precondition of act0 } 
+27:                     
+28 :                    Constraints ←add_const(act0<act1,Constraints) 
+29:                     CausalLinks ∪ {⟨acto,G,act1⟩} 
+30:                     for each A∈Actions do 
+31:                               Constraints ←protect(⟨acto,G,act1⟩,A,Constraints) 
+32:                               
+33:           until Agenda={} 
+34:           return total ordering of Actions consistent with Constraints
+*/
+
+			//*-*broadcast plan
+
+
+			//*-*make neccesary conflict resolution
+
+
+			//-run plan
+			return(currentDist);
+		}
 	}
 	
 	/*****************************************************************************/
@@ -170,24 +241,30 @@ public class RandomWalkClient {
 			lineN++;
 			
 		}
-		
+		createDistanceMap(); // creat distance map between every pair of locations in the level file.
 		
 		for (int i = 0; i<agents.size(); i++){
 			agents.get(i).findMyBoxes(boxes);
 			agents.get(i).printMyBoxes();
 			agents.get(i).findMyGoals(goals);
 			agents.get(i).printMyGoals();
+			System.err.println("current plan distance: "+agents.get(i).createPlan());
 
 		}
 		
 		
 		/*****************************************************************/
-		createDistanceMap(); // creat distance map between every pair of locations in the level file.
+		
+
 		//for test purpose
-		Vertex testa=new Vertex(1,3);
-		Vertex testb=new Vertex(3,19);
+		Vertex testa=new Vertex(1,23);
+		Vertex testb=new Vertex(1,24);
 		System.err.format("**************** This distance is "+Grid.matrix.get(Grid.pairSourceTarget(testa.hashCode(), testb.hashCode()))+"\n");
-	
+	}
+	public int getDisance(int[] a, int[] b){
+		int hash1 = ((a[0] + a[1])*(a[0] + a[1] + 1))/2 + a[1];
+		int hash2 = ((b[0] + b[1])*(b[0] + b[1] + 1))/2 + b[1];
+		return Grid.matrix.get(Grid.pairSourceTarget(hash1, hash2));
 	}
 
 	public boolean update() throws IOException {
@@ -253,8 +330,7 @@ public class RandomWalkClient {
 		
 		//do dijkstra computation
 		grid= new Grid(dij_graph);
-		grid.BFSMapping();
-		
+		grid.BFSMapping();		
 	}
 	
 	public int[] getLevelDimension(BufferedReader serverMessages) throws IOException{
