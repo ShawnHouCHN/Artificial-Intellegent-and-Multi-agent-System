@@ -71,21 +71,26 @@ public class RandomWalkClient {
 		
 		public int createPlan(){
 			//For all Goals, find closest through heuristic distance map
+
 			for(Goal goal: myGoals){
 				for(Box box: myBoxes){
-					int dist1= getDisance(box.location,goal.location);
-					int dist2= getDisance(box.location,this.location);
+					int dist1= getDistance(box.location,goal.location);
+					int dist2= getDistance(box.location,this.location);
 					if(dist1!=0 && dist1+dist2 < currentDist){
 						currentDist = dist1+dist2;
 						currentGoal = goal;
 						currentBox = box;
 					}
-				}
-				Finish: isBoxOnGoal
-				Start: agentlocation, boxlocation
 
+				}
+	
+				//Finish: isBoxOnGoal
+				//Start: agentlocation, boxlocation
 
 			}
+
+			runPop(currentBox, currentGoal);
+
 			//Make a pop plan from the closest goal to the agent, using the heuristic distance map to help make decisions
 			
 /*
@@ -135,6 +140,57 @@ non-deterministic procedure PartialOrderPlanner(Gs)
 			//-run plan
 			return(currentDist);
 		}
+
+		public void runPop(Box box, Goal goal) {
+			int[] boxCurrentLocation = goal.location;
+			int[] agentCurrentLocation;
+			
+			getDirection(goal.location, box.location);
+
+		}
+
+		public void getDirection(int[] currentLocation, int[] targetLocation) {
+			int closestToGoal = Integer.MAX_VALUE;
+
+			System.err.println("TARGET LOCATION: (" + targetLocation[0] + ", " + targetLocation[1] + ")");
+			System.err.println("CURRENT LOCATION: (" + currentLocation[0] + ", " + currentLocation[1] + ")");
+
+				int[] north = new int[]{ currentLocation[0] - 1, currentLocation[1] };
+				int[] south =  new int[]{ currentLocation[0] + 1, currentLocation[1] };
+				int[] west = new int[]{ currentLocation[0], currentLocation[1] - 1 };
+				int[] east = new int[]{ currentLocation[0], currentLocation[1] + 1 };
+
+				/*
+				System.err.println("NORTH: (" + north[0] + ", " + north[1] + ")");
+				System.err.println("SOUTH: (" + south[0] + ", " + south[1] + ")");
+				System.err.println("WEST: (" + west[0] + ", " + west[1] + ")");
+				System.err.println("EAST: (" + east[0] + ", " + east[1] + ")");
+
+				System.err.println("NORTH DISTANCE: " + getDistance(targetLocation, north));
+				System.err.println("SOUTH DISTANCE: " + getDistance(targetLocation, south));
+				System.err.println("WEST DISTANCE: " + getDistance(targetLocation, west));
+				System.err.println("EAST DISTANCE: " + getDistance(targetLocation, east));
+				*/
+
+				if(getDistance(targetLocation, north) < closestToGoal) {
+					closestToGoal = getDistance(targetLocation, north);
+					System.err.println("DIRECTION: NORTH");
+				}
+				if(getDistance(targetLocation, south) < closestToGoal) {
+					closestToGoal = getDistance(targetLocation, south);
+					System.err.println("DIRECTION: SOUTH");
+				}
+				if(getDistance(targetLocation, west) < closestToGoal) {
+					closestToGoal = getDistance(targetLocation, west);
+					System.err.println("DIRECTION: WEST");
+				}
+				if(getDistance(targetLocation, east) < closestToGoal) {
+					closestToGoal = getDistance(targetLocation, east);
+					System.err.println("DIRECTION: EAST");
+				}
+			
+		}
+
 	}
 	
 	/*****************************************************************************/
@@ -261,10 +317,18 @@ non-deterministic procedure PartialOrderPlanner(Gs)
 		Vertex testb=new Vertex(1,24);
 		System.err.format("**************** This distance is "+Grid.matrix.get(Grid.pairSourceTarget(testa.hashCode(), testb.hashCode()))+"\n");
 	}
-	public int getDisance(int[] a, int[] b){
-		int hash1 = ((a[0] + a[1])*(a[0] + a[1] + 1))/2 + a[1];
-		int hash2 = ((b[0] + b[1])*(b[0] + b[1] + 1))/2 + b[1];
-		return Grid.matrix.get(Grid.pairSourceTarget(hash1, hash2));
+	public int getDistance(int[] a, int[] b){
+		try {
+			if(Arrays.equals(a, b))
+				return 0;
+
+			int hash1 = ((a[0] + a[1])*(a[0] + a[1] + 1))/2 + a[1];
+			int hash2 = ((b[0] + b[1])*(b[0] + b[1] + 1))/2 + b[1];
+			return Grid.matrix.get(Grid.pairSourceTarget(hash1, hash2));
+		} catch(NullPointerException e) {
+			System.err.println("FATAL ERROR: " + e);
+			return Integer.MAX_VALUE;
+		}
 	}
 
 	public boolean update() throws IOException {
