@@ -12,8 +12,9 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeMap;
 
-import sampleclients.LevelObject;
+import sampleclients.Agent;
 import sampleclients.Grid;
+import sampleclients.Command.type;
 
 
 public abstract class Heuristic implements Comparator<Node> {
@@ -26,7 +27,12 @@ public abstract class Heuristic implements Comparator<Node> {
 		this.initgoals=initialState.goals;
 		this.initboxes=initialState.boxes;
 	}
+	
+//	public int h(Node n){
+//		return RandomWalkClient.level_grid.getBFSDistance(n.currentBox.location,n.currentGoal.location);
+//	}
 
+	//old hueristic of all 
 	public int h(Node n) {
 		
 		Set<Point> box_locs=new HashSet<Point>(n.boxes.keySet());
@@ -57,7 +63,7 @@ public abstract class Heuristic implements Comparator<Node> {
 			while(ite_box.hasNext()){
 				abox=ite_box.next();
 				if(this.initgoals.get(agoal).id==Character.toLowerCase(n.boxes.get(abox).id)){					
-					newdis=RandomWalkClient.level_grid.getBFSDistance(n.boxes.get(abox).location, this.initgoals.get(agoal).location);
+					newdis=RandomWalkClient.level_grid.getBFSDistance(new int[]{abox.x,abox.y}, new int[]{agoal.x,agoal.y});
 					if(newdis<dis){
 						dis=newdis;
 						clsboxx=abox.x;
@@ -81,6 +87,16 @@ public abstract class Heuristic implements Comparator<Node> {
 
 	@Override
 	public int compare(Node n1, Node n2) {
+		
+//		/**********************************************/
+//		//some test prioritizing based on action type
+//		if(this.f(n1) == this.f(n2)){
+//			if(n1.action.actType==type.Move)
+//				return	-1;
+//			else if(n2.action.actType==type.Move)
+//				return 1;
+//		}
+//		/**********************************************/
 		return this.f(n1) - this.f(n2);
 	}
 

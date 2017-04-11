@@ -13,7 +13,7 @@ import java.util.Map.Entry;
 import java.util.Random;
 
 import sampleclients.Command.type;
-import sampleclients.LevelObject;
+import sampleclients.Agent;
 
 public class Node {
 	private static final Random RND = new Random(1);
@@ -29,6 +29,11 @@ public class Node {
 	public Node parent;
 	public Command action;
 
+	
+	//testing logic 
+	Box currentBox;
+	Goal currentGoal;
+	
 	private int g;
 	
 	private int _hash = 0;
@@ -43,6 +48,8 @@ public class Node {
 			this.goals = parent.goals;
 			//this.boxes = new char[parent.boxes.length][parent.boxes[0].length];
 			this.boxes = new HashMap<Point, Box>(parent.boxes);
+			this.currentGoal=parent.currentGoal;
+			this.currentBox=parent.currentBox;
 		}
 
 	}
@@ -65,6 +72,25 @@ public class Node {
 	}
 
 
+	public Node(Node parent, boolean[][] walls, HashMap<Point,Box> boxes,HashMap<Point,Goal> goals, Box currentBox, Goal currentGoal, int[] agent_loc ) {
+		if (parent == null) {
+			this.g = 0;
+		} else {
+			this.g = parent.g() + 1;
+		}
+		this.parent = parent;
+		this.walls = walls;
+		this.boxes = boxes;
+		this.goals = goals;
+		this.agent_loc = agent_loc;
+		this.agentRow = agent_loc[0];
+		this.agentCol = agent_loc[1];
+		this.currentBox=currentBox;
+		this.currentGoal=currentGoal;
+		
+	}
+	
+	
 	public int g() {
 		return this.g;
 	}
@@ -73,26 +99,7 @@ public class Node {
 		return this.parent == null;
 	}
 	
-	//updated goalstate check;
-//	public boolean isGoalState() {
-//		int sum=0;
-//		for (int a_goal = 0; a_goal < this.goals.size(); a_goal++) {
-//			char g=this.goals.get(a_goal).id;
-//			int[] loc_g=this.goals.get(a_goal).location;
-//			for (int a_box = 0; a_box < this.boxes.size(); a_box++) {	
-//					char b=this.boxes.get(a_box).id;
-//					int[] loc_b=this.boxes.get(a_box).location;
-//					if (Character.toLowerCase(b)==g && Arrays.equals(loc_g, loc_b)){
-//						sum++;
-//					}
-//				}
-//		}
-//		if(sum==this.goals.size())
-//			return true;
-//		else
-//			return false;
-//	}
-	
+	//old isgoalstate function for integrated A* planning
 	public boolean isGoalState() {
 		for (Goal g : this.goals.values()){
 			char g_chr= g.id;
@@ -108,7 +115,17 @@ public class Node {
 		}
 		return true;
 	}
-
+	
+	//new isgoalstate function for single A* planning
+	public boolean isSingleGoalState() {
+		if (Arrays.equals(this.currentBox.location,this.currentGoal.location))
+			return true;
+		else
+			return false;
+	}	
+	
+	
+	
 	//updated get expanded nodes;
 	public ArrayList<Node> getExpandedNodes() {
 		ArrayList<Node> expandedNodes = new ArrayList<Node>(Command.every.length);
@@ -146,6 +163,10 @@ public class Node {
 						n.boxes.put(nbox_point, this.boxes.get(nagent_point));
 						n.boxes.remove(nagent_point);
 						expandedNodes.add(n);
+						
+						//extra logic update currentbox location
+						if(nagent_point.x==this.currentBox.location[0] && nagent_point.y==this.currentBox.location[1])
+							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{nbox_point.x,nbox_point.y});
 					}
 				}
 			} else if (c.actType == type.Pull) {
@@ -163,11 +184,15 @@ public class Node {
 						n.boxes.put(oagent_point, this.boxes.get(nbox_point));
 						n.boxes.remove(nbox_point);
 						expandedNodes.add(n);
+						
+						//extra logic update currentbox location
+						if(nbox_point.x==this.currentBox.location[0] && nbox_point.y==this.currentBox.location[1])
+							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{oagent_point.x,oagent_point.y});
 					}
 				}
 			}
 		}
-		Collections.shuffle(expandedNodes, RND);
+		//Collections.shuffle(expandedNodes, RND);
 		return expandedNodes;
 	}
 
