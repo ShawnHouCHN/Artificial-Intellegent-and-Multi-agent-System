@@ -2,6 +2,7 @@ package sampleclients;
 
 import java.awt.Point;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -41,35 +42,57 @@ public class Agent {
 		if (this.solution.size()==0)
 			return "NoOp";
 		//test end
+		System.err.println(this.id+" action is !! "+this.solution.peek().action.toString());
 		return this.solution.poll().action.toString();
 	}
 
 	public void findMyGoals(List< Goal > goals){
 		for (int i = 0; i < goals.size(); i++){
-			if(goals.get(i).color.equals(this.color)){
-				myGoals.put(new Point(goals.get(i).location[0],goals.get(i).location[1]), goals.get(i));
+			Goal a_goal=goals.get(i);
+			int agent2goal=RandomWalkClient.level_grid.getBFSDistance(a_goal.location,this.location);
+			if(a_goal.color.equals(this.color) && agent2goal!=Integer.MAX_VALUE && !a_goal.claimed){
+				for(Box mybox:myBoxes.values()){
+					if(Character.toLowerCase(mybox.id)==a_goal.id){
+						myGoals.put(new Point(a_goal.location[0],a_goal.location[1]),a_goal);
+						a_goal.claimed=true;
+						
+					}
+				}
 			}
 		}
 	}
-	public void findMyBoxes(List< Box > boxes){
+	public void findMyBoxes(List< Box > boxes, HashMap<String,ArrayList<Agent>> color_agents){
+		ArrayList<Agent> same_color_agents=color_agents.get(this.color);
 		for (int i = 0; i < boxes.size(); i++){
-			if(boxes.get(i).color.equals(this.color)){
-				myBoxes.put(new Point(boxes.get(i).location[0],boxes.get(i).location[1]), boxes.get(i));
+			Box a_box=boxes.get(i);
+			int agent2box=RandomWalkClient.level_grid.getBFSDistance(a_box.location,this.location);
+			if(a_box.color.equals(this.color) && agent2box!=Integer.MAX_VALUE && !a_box.claimed){
+				//TEST LOGIC, Load Balancer logic
+				int closest_agent=Integer.MAX_VALUE;
+				for (Agent same_color_agent: same_color_agents){
+					int other_agent2box=RandomWalkClient.level_grid.getBFSDistance(a_box.location,same_color_agent.location);
+					if(other_agent2box<closest_agent)
+						closest_agent=other_agent2box;
+				}
+				if (closest_agent==agent2box){
+					myBoxes.put(new Point(a_box.location[0],a_box.location[1]), a_box);
+					a_box.claimed=true;
+				}
 			}
 		}
 	}
 	public String printMyBoxes(){
 		String s="";
-		for(int i=0; i<myBoxes.size();i++){
-			s+=myBoxes.get(i).id+"\n";
+		for(Box mybox : myBoxes.values()){
+			s+=mybox.id+"\n";
 		}
 		System.err.println("my ID: "+id+" my boxes: "+s);
 		return s;
 	}
 	public String printMyGoals(){
 		String s="";
-		for(int i=0; i<myGoals.size();i++){
-			s+=myGoals.get(i).id+"\n";
+		for(Goal mygoal : myGoals.values()){
+			s+=mygoal.id+"\n";
 		}
 		System.err.println("my ID: "+id+" my goals: "+s);
 		return s;
@@ -78,12 +101,12 @@ public class Agent {
 	
 	
 	public int createPlan(){ 
-
+		System.err.println("MY ID is: "+this.id);
+		System.err.println("MY BOX KEYS:"+myBoxes.keySet().toString());
+		System.err.println("MY GOAL KEYS:"+myGoals.keySet().toString());
 		
 		while(!myBoxes.keySet().containsAll(myGoals.keySet()))
 		{
-			System.err.println("MY BOX KEYS:"+myBoxes.keySet().toString());
-			System.err.println("MY GOAL KEYS:"+myGoals.keySet().toString());
 			//System.err.println("MY BOX VALUES:"+myBoxes.values().toString());
 			int currentDist=Integer.MAX_VALUE;
 			for (Goal a_goal : myGoals.values()){
@@ -111,7 +134,7 @@ public class Agent {
 				}
 			
 			}
-			System.err.println("Agent at: "+this.location[0]+","+this.location[1]+" The box is"+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
+			//System.err.println("Agent at: "+this.location[0]+","+this.location[1]+" The box is"+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
 			this.initialState = new Node(null,RandomWalkClient.all_walls, myBoxes,myGoals,currentBox,currentGoal, this.location);
 			this.strategy= new StrategyBestFirst(new AStar(initialState));
 			LinkedList<Node> singlesolution=new LinkedList<Node>();
@@ -126,7 +149,6 @@ public class Agent {
 			}
 			this.solution.addAll(singlesolution);
 		}
-		
 		return this.solution.size();
 		
 		
@@ -201,7 +223,6 @@ public class Agent {
 			if (leafNode.isSingleGoalState()) {
 				this.location=new int[]{leafNode.agentRow,leafNode.agentCol};
 				this.myBoxes=leafNode.boxes;
-				
 				//update box locations for next subplan
 				for (Point box_loc : this.myBoxes.keySet())
 					this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
@@ -228,12 +249,13 @@ class Goal{
 	char id;
 	String color; //kept for finding links between box and goal
 	int[] location;
-
+	boolean claimed;
 	public Goal( char id, String color , int[] location) {
 		System.err.println("Found " + color + " Goal " + id + " Location " + location[0]+","+location[1]);
 		this.id = id;
 		this.color=color;
 		this.location=location;
+		this.claimed=false;
 	}
 	@Override
 	public boolean equals(Object o) {
@@ -258,11 +280,13 @@ class Box{
 	char id;
 	String color;
 	int[] location;
+	boolean claimed;
 	public Box( char id, String color , int[] location) {
 		//System.err.println("Found " + color + " Box " + id + " Location " + location[0]+","+location[1]);
 		this.id = id;
 		this.color=color;
 		this.location=location;
+		this.claimed=false;
 	}
 	
     

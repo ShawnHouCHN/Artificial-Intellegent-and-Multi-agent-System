@@ -16,8 +16,9 @@ import sampleclients.Agent;
 public class RandomWalkClient {
 	private static Random rand = new Random();
 	private BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
-	public List< Agent > all_agents = new ArrayList< Agent >();
-	public List< Goal > alll_goals = new ArrayList< Goal >();
+	public TreeMap<Character, Agent > all_agents = new TreeMap<Character, Agent >();
+	public HashMap<String,ArrayList<Agent>> color_agents=new HashMap<String,ArrayList<Agent>>();
+	public List< Goal > all_goals = new ArrayList< Goal >();
 	public List< Box > all_boxes = new ArrayList< Box >();
 	public HashMap<Integer,Vertex> dij_graph=new HashMap<Integer,Vertex>();
 	public static boolean[][] all_walls=null;
@@ -66,14 +67,22 @@ public class RandomWalkClient {
 				//if the chr is an agent
 				else if ( '0' <= id && id <= '9' ){
 					System.err.println("Found agent "+id);
-					all_agents.add(new Agent(id, colors.get(id),new int[]{lineN,i}));
+					Agent new_agent =new Agent(id, colors.get(id),new int[]{lineN,i});
+					all_agents.put(id,new_agent);
+					
+					//categorize agents by color
+					if(!color_agents.containsKey(new_agent.color))
+						color_agents.put(new_agent.color, new ArrayList<Agent>());					
+					color_agents.get(new_agent.color).add(new_agent);
+					//	
+					
 					all_frees[lineN][i] = true;
 				}
 				
 				//save all goals
 				else if('a' <= id && id <= 'z'){
 					System.err.println("Found Goal "+id);
-					alll_goals.add(new Goal(id, colors.get(Character.toUpperCase(id)),new int[]{lineN,i}));
+					all_goals.add(new Goal(id, colors.get(Character.toUpperCase(id)),new int[]{lineN,i}));
 					all_frees[lineN][i] = true;
 				}
 				
@@ -108,14 +117,14 @@ public class RandomWalkClient {
 		
 		
 		
-		/*****************************Create Plan For Each Agent***********************************/
-		for (int i = 0; i<all_agents.size(); i++){
-			all_agents.get(i).findMyBoxes(all_boxes);
-			//agents.get(i).printMyBoxes();
-			all_agents.get(i).findMyGoals(alll_goals);
-			//agents.get(i).printMyGoals();
-			System.err.println("Create plan for agent "+i+ ": with length="+all_agents.get(i).createPlan());
-
+		/*****************************Create Plan For Each Legal Agent***********************************/
+		for (Character agent_id : all_agents.keySet()){
+			Agent a_agent=all_agents.get(agent_id);
+			a_agent.findMyBoxes(all_boxes,color_agents);
+			//a_agent.printMyBoxes();
+			a_agent.findMyGoals(all_goals);
+			//a_agent.printMyGoals();
+			System.err.println("Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
 		}
 		
 		/******************************************************************************************/
@@ -127,10 +136,10 @@ public class RandomWalkClient {
 	public boolean update() throws IOException {
 		String jointAction = "[";
 
-		for ( int i = 0; i < all_agents.size() - 1; i++ )
-			jointAction += all_agents.get( i ).act() + ",";
+		for (Character agent_id : all_agents.keySet())
+			jointAction += all_agents.get( agent_id ).act() + ",";
 		
-		jointAction += all_agents.get( all_agents.size() - 1 ).act() + "]";
+		jointAction = jointAction.substring(0,jointAction.length()-1)  + "]";
 
 		// Place message in buffer
 		System.out.println( jointAction );

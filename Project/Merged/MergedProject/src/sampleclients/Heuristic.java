@@ -88,15 +88,6 @@ public abstract class Heuristic implements Comparator<Node> {
 	@Override
 	public int compare(Node n1, Node n2) {
 		
-//		/**********************************************/
-//		//some test prioritizing based on action type
-//		if(this.f(n1) == this.f(n2)){
-//			if(n1.action.actType==type.Move)
-//				return	-1;
-//			else if(n2.action.actType==type.Move)
-//				return 1;
-//		}
-//		/**********************************************/
 		return this.f(n1) - this.f(n2);
 	}
 
