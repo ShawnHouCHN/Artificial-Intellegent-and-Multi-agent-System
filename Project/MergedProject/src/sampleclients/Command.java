@@ -2,6 +2,7 @@ package sampleclients;
 
 import java.util.LinkedList;
 
+
 public class Command {
 	static {
 		LinkedList< Command > cmds = new LinkedList< Command >();
@@ -34,6 +35,29 @@ public class Command {
 		return d1.ordinal() + d2.ordinal() == 3;
 	}
 
+	public static int dirToRowChange(dir d) {
+		// South is down one row (1), north is up one row (-1).
+		switch (d) {
+		case S:
+			return 1;
+		case N:
+			return -1;
+		default:
+			return 0;
+		}
+	}
+
+	public static int dirToColChange(dir d) {
+		// East is right one column (1), west is left one column (-1).
+		switch (d) {
+		case E:
+			return 1;
+		case W:
+			return -1;
+		default:
+			return 0;
+		} 
+	}
 	// Order of enum important for determining opposites
 	public static enum dir {
 		N, W, E, S
@@ -63,6 +87,8 @@ public class Command {
 		dir1 = d1;
 		dir2 = d2;
 	}
+	
+	
 
 	public String toString() {
 		if ( actType == type.Move ){
