@@ -118,6 +118,7 @@ public class Node {
 	
 	//new isgoalstate function for single A* planning
 	public boolean isSingleGoalState() {
+		
 		if (Arrays.equals(this.currentBox.location,this.currentGoal.location))
 			return true;
 		else

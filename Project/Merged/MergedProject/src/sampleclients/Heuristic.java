@@ -63,7 +63,7 @@ public abstract class Heuristic implements Comparator<Node> {
 			while(ite_box.hasNext()){
 				abox=ite_box.next();
 				if(this.initgoals.get(agoal).id==Character.toLowerCase(n.boxes.get(abox).id)){					
-					newdis=RandomWalkClient.level_grid.getBFSDistance(new int[]{abox.x,abox.y}, new int[]{agoal.x,agoal.y});
+					newdis=RandomWalkClient.initial_level_grid.getBFSDistance(new int[]{abox.x,abox.y}, new int[]{agoal.x,agoal.y});
 					if(newdis<dis){
 						dis=newdis;
 						clsboxx=abox.x;

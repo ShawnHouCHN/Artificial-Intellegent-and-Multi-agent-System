@@ -20,10 +20,10 @@ public class RandomWalkClient {
 	public HashMap<String,ArrayList<Agent>> color_agents=new HashMap<String,ArrayList<Agent>>();
 	public List< Goal > all_goals = new ArrayList< Goal >();
 	public List< Box > all_boxes = new ArrayList< Box >();
-	public HashMap<Integer,Vertex> dij_graph=new HashMap<Integer,Vertex>();
+	public HashMap<Integer,Vertex> initial_graph=new HashMap<Integer,Vertex>();
 	public static boolean[][] all_walls=null;
 	boolean[][] all_frees=null;
-	public static Grid level_grid=null; //this is the grid to save all distance between any pair of locations 
+	public static Grid initial_level_grid=null; //this is the grid to save all distance between any pair of locations 
 		
 	
 	public RandomWalkClient() throws IOException {
@@ -110,8 +110,7 @@ public class RandomWalkClient {
 		
 		/*****************************Create Grid BFS Distance Heuristic****************************/
 		createDistanceMap(); // creat distance map between every pair of locations in the level file.
-		//System.err.println("**************** Start this bxtch ************************");
-		level_grid=new Grid(this.dij_graph);
+		initial_level_grid=new Grid(this.initial_graph);
 		
 		/******************************************************************************************/
 		
@@ -120,10 +119,13 @@ public class RandomWalkClient {
 		/*****************************Create Plan For Each Legal Agent***********************************/
 		for (Character agent_id : all_agents.keySet()){
 			Agent a_agent=all_agents.get(agent_id);
+			int[] init_agent_loc=a_agent.location;
 			a_agent.findMyBoxes(all_boxes,color_agents);
 			//a_agent.printMyBoxes();
 			a_agent.findMyGoals(all_goals);
 			//a_agent.printMyGoals();
+			a_agent.setInitialWalls(all_walls);
+			a_agent.setInitialGraph(this.initial_graph);
 			System.err.println("Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
 		}
 		
@@ -164,8 +166,8 @@ public class RandomWalkClient {
 					//do dijkstra mapping below
 					Vertex dj_vertex= new Vertex(frow,fcol);
 					//four directions
-					if(!dij_graph.containsKey(dj_vertex.hashCode())){
-						dij_graph.put(dj_vertex.hashCode(), dj_vertex);	
+					if(!initial_graph.containsKey(dj_vertex.hashCode())){
+						initial_graph.put(dj_vertex.hashCode(), dj_vertex);	
 						Vertex dj_adj_vertex;
 						if (all_frees[frow-1][fcol]){
 							dj_adj_vertex = new Vertex(frow-1,fcol);
