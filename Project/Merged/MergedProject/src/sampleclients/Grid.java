@@ -31,6 +31,14 @@ public class Grid {
 		return dis;
 	}
 	
+	public static int getBFSPesudoDistance(int[] source, int[] target,HashMap<Integer,Vertex> myGraph){
+		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
+		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
+		int unionhash=Grid.pairSourceTarget(hash1, hash2);
+		int dis=BFSDistance(hash1,hash2,myGraph);
+		return dis;
+	}
+	
 	//save for the inital matrix of Grid
 	public int getBFSDistance(int[] source, int[] target){
 		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
@@ -90,24 +98,17 @@ public class Grid {
 	}
 	
 	
-	//dynamic computation of the distance
-	public static int getBFSDistance(int[] source, int[] target, HashMap<Integer,Vertex> current_graph){
-		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
-		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
-		int dis=BFSDistance(hash1,hash2,current_graph);
-		return dis;
-	}
 	
 	
-	public static int BFSDistance(int source, int target, HashMap<Integer,Vertex> current_graph){
+	public static int BFSDistance(int source, int target, HashMap<Integer,Vertex> myGraph){
 		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
 		HashSet<Integer> closedset = new HashSet<Integer>();
-		HashMap<Integer,Vertex> graph= new HashMap<Integer,Vertex>(current_graph);
+		HashMap<Integer,Vertex> graph= new HashMap<Integer,Vertex>(myGraph);
 		if (source==target)
 			return 0;
 		if (!graph.containsKey(target) || !graph.containsKey(source)){  //if source or target accident to be wall;
 			return Integer.MAX_VALUE;
-		} 
+		}
 		frontier.add(source);
 		graph.get(source).setDistanceFromSource(0);
 		int vet=0;
@@ -117,13 +118,19 @@ public class Grid {
 			closedset.add(vet);
 			//System.err.println("Investigate:"+graph.get(vet).toString());
 			if (vet==target)
-			{						
+			{			
 				return graph.get(vet).getDistanceFromSource();
 			}
+			int tem_key=pairSourceTarget(source,vet);
+						
 			for (Vertex edge:graph.get(vet).getEdges()){
 				if(!closedset.contains(edge.hashCode()) && !frontier.contains(edge.hashCode()) )
-				{				
-					graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+				{		
+					if (graph.get(edge.hashCode()).getLock()) //if it hits this fake wall
+						graph.get(edge.hashCode()).setDistanceFromSource(LOCK_THRESHOLD);
+					else	
+						graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+					
 					frontier.addLast(edge.hashCode());
 				}
 			}

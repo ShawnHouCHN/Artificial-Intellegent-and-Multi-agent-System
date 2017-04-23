@@ -120,12 +120,17 @@ public class RandomWalkClient {
 		for (Character agent_id : all_agents.keySet()){
 			Agent a_agent=all_agents.get(agent_id);
 			int[] init_agent_loc=a_agent.location;
+			
+			a_agent.setInitialGraph(this.initial_graph);
+			
+			a_agent.setInitialWalls(all_walls);
+			
 			a_agent.findMyBoxes(all_boxes,color_agents);
 			//a_agent.printMyBoxes();
 			a_agent.findMyGoals(all_goals);
 			//a_agent.printMyGoals();
-			a_agent.setInitialWalls(all_walls);
-			a_agent.setInitialGraph(this.initial_graph);
+			
+			
 			System.err.println("Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
 		}
 		
@@ -138,7 +143,7 @@ public class RandomWalkClient {
 	public boolean update() throws IOException {
 		String jointAction = "[";
 
-		for (Character agent_id : all_agents.keySet())
+		for (Character agent_id : all_agents.keySet()) 
 			jointAction += all_agents.get( agent_id ).act() + ",";
 		
 		jointAction = jointAction.substring(0,jointAction.length()-1)  + "]";

@@ -34,6 +34,7 @@ public abstract class Heuristic implements Comparator<Node> {
 
 	//old hueristic of all 
 	public int h(Node n) {
+//		return (RandomWalkClient.initial_level_grid.getBFSDistance(n.agent_loc,n.currentBox.location)+RandomWalkClient.initial_level_grid.getBFSDistance(n.currentGoal.location,n.currentBox.location)-1);
 		
 		Set<Point> box_locs=new HashSet<Point>(n.boxes.keySet());
 		Set<Point> goal_locs= new HashSet<Point>(this.initgoals.keySet());
