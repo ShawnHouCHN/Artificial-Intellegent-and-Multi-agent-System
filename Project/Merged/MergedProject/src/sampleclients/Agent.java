@@ -53,10 +53,11 @@ public class Agent {
 		
 		
 		//continued NoOp action to wait until other agents finish
-		if (this.solution.size()==0)
+		if (this.plan.size()==0)
 			return "NoOp";
 		//System.err.println(this.id+" action is !! "+this.solution.getLast().currentBox.toString());
-		return this.solution.poll().action.toString();
+		return this.plan.poll().toString();
+		//return this.solution.poll().action.toString();
 	}
 
 	public void findMyGoals(List< Goal > goals){
