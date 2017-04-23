@@ -157,12 +157,12 @@ public class RandomWalkClient {
 			//System.err.println("AGENT " + agent_id + ", INITIAL LOCATION: " +  + locX + ", " + locY);
 			
 			pathPositions.put(agent_id, new ArrayList<Integer>());
-			pathPositions.get(agent_id).add(locX);
 			pathPositions.get(agent_id).add(locY);
+			pathPositions.get(agent_id).add(locX);
 			
 			boxPaths.put(agent_id, new ArrayList<Integer>());
-			boxPaths.get(agent_id).add(boxX);
 			boxPaths.get(agent_id).add(boxY);
+			boxPaths.get(agent_id).add(boxX);
 			
 			getAgent.plan.clear();
 			
@@ -181,20 +181,20 @@ public class RandomWalkClient {
 				
 				switch(getAction.dir1.toString()) {
 					case "N":
-						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) - 1;
+						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2) - 1;
 						break;
 					case "S":
-						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) + 1;
+						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2) + 1;
 						break;
 					case "W":
-						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2) - 1;
+						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) - 1;
 						break;
 					case "E":
-						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2) + 1;
+						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) + 1;
 						break;
 					default:
-						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1);
-						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2);
+						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2);
+						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1);
 				}
 				
 				if(getAction.actType.toString().equals("Push")) {
@@ -247,11 +247,11 @@ public class RandomWalkClient {
 					
 				}
 				
-				boxPaths.get(agent_id).add(boxX);
 				boxPaths.get(agent_id).add(boxY);
+				boxPaths.get(agent_id).add(boxX);
 				
-				pathPositions.get(agent_id).add(locX);
 				pathPositions.get(agent_id).add(locY);
+				pathPositions.get(agent_id).add(locX);
 				
 			}
 			
