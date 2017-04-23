@@ -31,11 +31,11 @@ public class Grid {
 		return dis;
 	}
 	
-	public static int getBFSPesudoDistance(int[] source, int[] target,HashMap<Integer,Vertex> myGraph){
+	public static int getBFSPesudoDistance(int[] source, int[] target,HashMap<Integer,Vertex> myGraph, char agent_id){
 		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
 		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
 		int unionhash=Grid.pairSourceTarget(hash1, hash2);
-		int dis=BFSDistance(hash1,hash2,myGraph);
+		int dis=BFSDistance(hash1,hash2,myGraph,agent_id);
 		return dis;
 	}
 	
@@ -100,7 +100,7 @@ public class Grid {
 	
 	
 	
-	public static int BFSDistance(int source, int target, HashMap<Integer,Vertex> myGraph){
+	public static int BFSDistance(int source, int target, HashMap<Integer,Vertex> myGraph, char agent_id){
 		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
 		HashSet<Integer> closedset = new HashSet<Integer>();
 		HashMap<Integer,Vertex> graph= new HashMap<Integer,Vertex>(myGraph);
@@ -126,13 +126,19 @@ public class Grid {
 			for (Vertex edge:graph.get(vet).getEdges()){
 				if(!closedset.contains(edge.hashCode()) && !frontier.contains(edge.hashCode()) )
 				{		
-					if (graph.get(edge.hashCode()).getLock()) //if it hits this fake wall
+					if (graph.get(edge.hashCode()).getAgentLock(agent_id)) //if it hits this fake wall
 						graph.get(edge.hashCode()).setDistanceFromSource(LOCK_THRESHOLD);
 					else	
 						graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
 					
 					frontier.addLast(edge.hashCode());
+					
 				}
+				else if(closedset.contains(edge.hashCode()) && graph.get(edge.hashCode()).getDistanceFromSource()>=LOCK_THRESHOLD){
+					if((graph.get(vet).getDistanceFromSource()+1)< LOCK_THRESHOLD)
+						graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+				}
+				
 			}
 		}		
 		

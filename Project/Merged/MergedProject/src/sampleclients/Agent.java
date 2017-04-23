@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -102,15 +103,23 @@ public class Agent {
 					myBoxes.put(new Point(a_box.location[0],a_box.location[1]), a_box);
 					a_box.claimed=true;
 					esm_sum_dis=esm_sum_dis+closest_agent;
-				}else{
-					restBoxes.put(new Point(a_box.location[0],a_box.location[1]), a_box);
-					myGraph.get(a_box.hashCode()).setLock(true);					
 				}
-			}else{
-				restBoxes.put(new Point(a_box.location[0],a_box.location[1]), a_box);
-				myGraph.get(a_box.hashCode()).setLock(true);
 			}
+			
+			if(!myBoxes.containsKey(new Point(a_box.location[0],a_box.location[1])))
+			{
+				System.err.println("This:"+a_box.toString()+" is a barrier");
+				restBoxes.put(new Point(a_box.location[0],a_box.location[1]), a_box);
+				this.myGraph.get(a_box.hashCode()).setAgentLock(this.id, true);
+			}
+
 		}
+//		//TESST!!!!!!
+//		for (Vertex currentvertex: this.myGraph.values()){
+//			if (currentvertex.getLock()){
+//				System.err.println("For agent"+this.id+"Vertex locked:"+currentvertex.toString());
+//			}
+//		}
 	}
 	
 	public void setInitialWalls(boolean[][] all_walls){
@@ -121,7 +130,8 @@ public class Agent {
 	}
 	
 	public void setInitialGraph(HashMap<Integer,Vertex> initial_graph){
-		this.myGraph= new HashMap<Integer,Vertex>(initial_graph); //new hashmap and it has to be updated !!!!!!!!
+
+		this.myGraph= initial_graph; //Reference to global graph
 	}
 	
 	public int findMyGoalFreedom(Goal a_goal){
@@ -165,19 +175,21 @@ public class Agent {
 		
 		while(!myBoxes.keySet().containsAll(myGoals.keySet()))
 		{
-			//HashMap<Integer,Vertex> current_graph=new HashMap<Integer,Vertex>(initial_graph);
-			//This logic needs to be changed for better prioirtizing boxes. 
 
 			FindNextBoxGoal();
 			
 			System.err.println("Agent at: "+this.location[0]+","+this.location[1]+" The box is "+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
-			this.initialState = new Node(true, null,RandomWalkClient.all_walls, myBoxes,myGoals,myGraph,currentBox,currentGoal, this.location);
+			
+			//true == other boxes are walls / false == other boxes are free spaces
+			boolean aware_others=true;
+			this.initialState = new Node(aware_others, null,RandomWalkClient.all_walls, myBoxes,myGoals,myGraph,currentBox,currentGoal, this.location, this.id);
+			
+			
 			this.strategy= new StrategyBestFirst(new AStar(initialState));
 			LinkedList<Node> singlesolution=new LinkedList<Node>();
 			
 			try {			
 				singlesolution=SearchSingle(strategy);
-				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				System.err.println("Exception happened, solution cannot be found!!");
@@ -187,23 +199,6 @@ public class Agent {
 		}
 		return this.solution.size();
 		
-		
-		
-		
-		
-		//Old logic using A*//
-//		this.initialState= new Node(null,RandomWalkClient.all_walls, myBoxes,myGoals,this.location);
-//		strategy= new StrategyBestFirst(new AStar(initialState));
-//		try {
-//			this.solution=Search(strategy);
-//		} catch (IOException e) {
-//			// TODO Auto-generated catch block
-//			System.err.println("Exception happened, solution cannot be found!!");
-//			e.printStackTrace();
-//		}
-//		
-//
-//		return this.solution.size();
 	}
 
 	
@@ -306,13 +301,16 @@ public class Agent {
 			ArrayList<Goal> closest_goals=unfinished_goals.pollFirstEntry().getValue();
 			boolean valid=true;
 			for (Goal closest_goal : closest_goals){
+				
+				System.err.println("Inspect "+closest_goal.toString()+" validaity");
 				valid=validateNextGoal(closest_goal);
+				
 				if(valid){
 					this.currentGoal=closest_goal;
 					System.err.println("Current Goal is "+ this.currentGoal.toString());
 					break;
 				}
-				System.err.println(closest_goal.toString()+" is not valid");
+				
 			}
 			if(valid){
 				break;
@@ -329,7 +327,7 @@ public class Agent {
 				continue;
 			}
 			int box2goal=RandomWalkClient.initial_level_grid.getBFSDistance(a_box.location,this.currentGoal.location);
-			if(Character.toLowerCase(a_box.id)==this.currentGoal.id && box2goal<=currentDist){
+			if(Character.toLowerCase(a_box.id)==this.currentGoal.id && box2goal<=currentDist ){
 				currentDist=box2goal;
 				this.currentBox=a_box;
 			}
@@ -342,7 +340,7 @@ public class Agent {
 	public boolean validateNextGoal(Goal closest_goal){
 		
 		Set<Point> box_locs=new HashSet<Point>(this.myBoxes.keySet());
-		this.myGraph.get(closest_goal.hashCode()).setLock(true);
+		this.myGraph.get(closest_goal.hashCode()).setAgentLock(this.id, true);
 		boolean valid=true;
 
 		for (Goal a_goal : myGoals.values()){
@@ -361,7 +359,7 @@ public class Agent {
 				if(myGoals.containsKey(a_box_loc) && Character.toLowerCase(this.myBoxes.get(a_box_loc).id)==myGoals.get(a_box_loc).id)
 					continue;	
 				else if(Character.toLowerCase(this.myBoxes.get(a_box_loc).id)==a_goal.id){
-					int sudobox2goal=RandomWalkClient.initial_level_grid.getBFSPesudoDistance(this.myBoxes.get(a_box_loc).location,a_goal.location);
+					int sudobox2goal=Grid.getBFSPesudoDistance(this.myBoxes.get(a_box_loc).location,a_goal.location,this.myGraph, this.id);
 					if (sudobox2goal<currentDist){
 						currentDist=sudobox2goal;
 						clsbox2other=a_box_loc;
@@ -369,9 +367,11 @@ public class Agent {
 				}
 				
 			}
-			//System.err.println("Agent at "+this.location[0]+","+this.location[1]+" locked goal: "+closest_goal.toString()+" inspect another goal "+a_goal.toString()+" and found closest box to the other goal is "+clsbox2other.toString()+" and the distance between the another goal and this box becomes "+currentDist+" The distance between agent to this box "+ RandomWalkClient.initial_level_grid.getBFSPesudoDistance(this.myBoxes.get(clsbox2other).location,this.location));
+			
+			//System.err.println("Agent at "+this.location[0]+","+this.location[1]+" locked goal: "+closest_goal.toString()+" inspect another goal "+a_goal.toString()+" and its closest box to itself is "+clsbox2other.toString()+" and the distance between this another goal and this box becomes "+currentDist+" The distance between agent to this box "+ Grid.getBFSPesudoDistance(this.myBoxes.get(clsbox2other).location,this.location,this.myGraph));
 			//System.err.println("If I choose goal "+closest_goal.toString()+" and other goal:"+a_goal.toString()+ "'s closest box "+clsbox2other.toString()+"distance to its closest goal:"+currentDist);		
-			if((RandomWalkClient.initial_level_grid.getBFSPesudoDistance(this.myBoxes.get(clsbox2other).location,this.location)+currentDist)>=Grid.LOCK_THRESHOLD){
+			if((Grid.getBFSPesudoDistance(this.myBoxes.get(clsbox2other).location,this.location,this.myGraph,this.id)+currentDist)>=Grid.LOCK_THRESHOLD){
+				//System.err.println("Box "+clsbox2other.toString()+ "unreach "+RandomWalkClient.initial_level_grid.getBFSPesudoDistance(this.myBoxes.get(clsbox2other).location,this.location));
 				valid=false;	
 				break;
 				
@@ -380,7 +380,7 @@ public class Agent {
 			box_locs.remove(clsbox2other);
 			
 		}
-		this.myGraph.get(closest_goal.hashCode()).setLock(false);
+		this.myGraph.get(closest_goal.hashCode()).setAgentLock(this.id, false);
 		return valid;
 	}
 	 
