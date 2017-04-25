@@ -34,6 +34,7 @@ public class Agent {
 	public HashMap<Point, Box > restBoxes = new HashMap<Point, Box>();
 	public HashMap<Integer,Vertex> myGraph;
 	public LinkedList<Command> plan=new LinkedList<Command>();
+	public LinkedList<Point> agent_plan=new LinkedList<Point>();
 	public LinkedList<Node> solution=new LinkedList<Node>();
 	public HashMap<Integer, LinkedList<Node>> subplanboard=new HashMap<Integer, LinkedList<Node>>();
 	public Strategy strategy;
@@ -196,7 +197,7 @@ public class Agent {
 				System.err.println("Exception happened, solution cannot be found!!");
 				e.printStackTrace();
 			}
-			this.solution.addAll(singlesolution);
+			//this.solution.addAll(singlesolution);
 		}
 		return this.solution.size();
 		
@@ -221,7 +222,7 @@ public class Agent {
 
 			Node leafNode = strategy.getAndRemoveLeaf();
 			if (leafNode.isGoalState()) {
-				return leafNode.extractPlan();
+				return leafNode.extractSolution();
 			}
 
 			strategy.addToExplored(leafNode);
@@ -264,7 +265,11 @@ public class Agent {
 					for (Point box_loc : this.myBoxes.keySet())
 						this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
 					
-					return leafNode.extractPlan();
+					leafNode.extractSolution();
+					this.plan.addAll(leafNode.action_plan);
+					this.agent_plan.addAll(leafNode.agent_plan);
+					this.solution.addAll(leafNode.solution_plan);
+					return leafNode.solution_plan;
 				}
 			}
 
@@ -303,12 +308,12 @@ public class Agent {
 			boolean valid=true;
 			for (Goal closest_goal : closest_goals){
 				
-				System.err.println("Inspect "+closest_goal.toString()+" validaity");
+				//System.err.println("Inspect "+closest_goal.toString()+" validaity");
 				valid=validateNextGoal(closest_goal);
 				
 				if(valid){
 					this.currentGoal=closest_goal;
-					System.err.println("Current Goal is "+ this.currentGoal.toString());
+					//System.err.println("Current Goal is "+ this.currentGoal.toString());
 					break;
 				}
 				

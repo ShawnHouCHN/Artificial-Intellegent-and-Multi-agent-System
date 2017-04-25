@@ -32,6 +32,9 @@ public class Node {
 	public Command action;
 	public boolean wall_detect;
 	
+	public LinkedList<Point> agent_plan;
+	public LinkedList<Command> action_plan;
+	public LinkedList<Node> solution_plan;
 	//testing logic 
 	Box currentBox;
 	Goal currentGoal;
@@ -217,16 +220,21 @@ public class Node {
 		return copy;
 	}
 
-	public LinkedList<Node> extractPlan() {
-		LinkedList<Node> plan = new LinkedList<Node>();
+	public LinkedList<Node> extractSolution() {
+		this.solution_plan = new LinkedList<Node>();
+		this.action_plan = new LinkedList<Command>();
+		this.agent_plan = new LinkedList<Point>();
 		Node n = this;
 		while (!n.isInitialState()) {
-			plan.addFirst(n);
+			this.solution_plan.addFirst(n);
+			this.action_plan.addFirst(n.action);
+			this.agent_plan.addFirst(new Point(n.agentRow, n.agentCol));
 			n = n.parent;
 		}
-		return plan;
+		return solution_plan;
 	}
 
+	
 	@Override
 	public int hashCode() {
 		if (this._hash == 0) {
