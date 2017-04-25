@@ -1,6 +1,7 @@
 package sampleclients;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class Vertex {
 	public static int MAX_ROW = 70;
@@ -9,7 +10,8 @@ public class Vertex {
     private ArrayList<Vertex> edges;
     private int distanceFromSource;
     private boolean visited;
-    
+    private boolean lock;
+    private HashMap<Character, Boolean> locks;
 	public Vertex(int x, int y) {
 		// TODO Auto-generated constructor stub
 		super();
@@ -18,6 +20,8 @@ public class Vertex {
 		this.edges = new ArrayList<Vertex>();
 		this.distanceFromSource= Integer.MAX_VALUE;
 		this.visited=false;
+		this.lock=false;
+		this.locks=new HashMap<Character, Boolean>();
 	}
 
 
@@ -39,7 +43,9 @@ public class Vertex {
 		this.edges.add(edge);
 	}
 	
-	
+	public void removeEdge(Vertex edge) {
+		this.edges.remove(edge);
+	}
 
 	public int getDistanceFromSource() {
 		return distanceFromSource;
@@ -49,6 +55,25 @@ public class Vertex {
 		this.distanceFromSource = distanceFromSource;
 	}
 	
+	public void setLock(boolean lock){
+		this.lock=lock;
+	}
+	
+	public void setAgentLock(char agent_id, boolean lock){
+		this.locks.put(agent_id, lock);
+	}
+	
+	public boolean getAgentLock(char agent_id){
+		if(this.locks.containsKey(agent_id)){
+			return this.locks.get(agent_id);
+		}else{
+			return false;
+		}
+	}
+	
+	public boolean getLock(){
+		return this.lock;
+	}
 
     public boolean equals(Object o) {
     	Vertex c = (Vertex) o;

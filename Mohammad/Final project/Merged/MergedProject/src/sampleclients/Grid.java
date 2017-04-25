@@ -12,7 +12,7 @@ import java.util.Queue;
 
 public class Grid {
 	
-	
+	public static int LOCK_THRESHOLD = 10000;
 	public HashMap<Integer, Vertex> graph;
 	public static HashMap<Integer,Integer> matrix;
 	public List<Integer> sortedkeys;
@@ -21,69 +21,38 @@ public class Grid {
 		matrix=new HashMap<Integer,Integer>();
 	}
 	
-	public void BFSMapping(){
-		int dis=0;
-		int key=0;
-		for(int source: graph.keySet()){
-			//for(int target: sortedkeys){
-				//key=pairSourceTarget(source, target);
-				//if(key!=0 && !Grid.matrix.containsKey(key)){
-			BFSDistance(source);
-					//Grid.matrix.put(key, dis);
-				//}
-				
-			//}
-			//break; //test
-		}
+	public int getBFSPesudoDistance(int[] source, int[] target){
+		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
+		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
+		int unionhash=Grid.pairSourceTarget(hash1, hash2);
+		int dis=BFSDistance(hash1,hash2);
+		if (dis<LOCK_THRESHOLD && !Grid.matrix.containsKey(unionhash))
+			Grid.matrix.put(unionhash, dis);
+		return dis;
 	}
 	
+	public static int getBFSPesudoDistance(int[] source, int[] target,HashMap<Integer,Vertex> myGraph, char agent_id){
+		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
+		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
+		int unionhash=Grid.pairSourceTarget(hash1, hash2);
+		int dis=BFSDistance(hash1,hash2,myGraph,agent_id);
+		return dis;
+	}
+	
+	//save for the inital matrix of Grid
 	public int getBFSDistance(int[] source, int[] target){
 		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
 		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
 		int unionhash=Grid.pairSourceTarget(hash1, hash2);
 		if(!Grid.matrix.containsKey(unionhash)){
 			int dis=BFSDistance(hash1,hash2);
-			Grid.matrix.put(unionhash, dis);
+			if (dis<LOCK_THRESHOLD)
+				Grid.matrix.put(unionhash, dis);
 			return dis;
 		}else{
 			return Grid.matrix.get(unionhash);
 		}
 	}
-	
-	
-	//abandoned function.
-	public int BFSDistance(Vertex source, Vertex target){
-		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
-		HashSet<Integer> closedset = new HashSet<Integer>();
-		if (source==target)
-			return 0;
-		frontier.add(source.hashCode());
-		graph.get(source.hashCode()).setDistanceFromSource(0);
-		Integer vet=0;
-		while(!frontier.isEmpty()){
-			vet=frontier.pollFirst();
-			closedset.add(vet);
-			if (vet==target.hashCode())
-			{							
-				return graph.get(vet).getDistanceFromSource();
-			}
-			int tem_key=pairSourceTarget(source.hashCode(),graph.get(vet).hashCode());
-			Grid.matrix.put(tem_key,graph.get(vet).getDistanceFromSource());	
-			for (Vertex edge:graph.get(vet.hashCode()).getEdges()){
-				if(!closedset.contains(edge.hashCode()))
-				{				
-					graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
-					//int tem_key=pairSourceTarget(source.hashCode(),edge.hashCode());
-					//if(!Grid.matrix.containsKey(tem_key))
-					//Grid.matrix.put(tem_key,edge.getDistanceFromSource());
-					frontier.addLast(edge.hashCode());
-				}
-			}
-		}		
-		
-		return Integer.MAX_VALUE;
-	}
-	
 	
 	public int BFSDistance(int source, int target){
 		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
@@ -108,11 +77,18 @@ public class Grid {
 				return graph.get(vet).getDistanceFromSource();
 			}
 			int tem_key=pairSourceTarget(source,vet);
-			Grid.matrix.put(tem_key,graph.get(vet).getDistanceFromSource());	
+			
+			if (graph.get(vet).getDistanceFromSource()<LOCK_THRESHOLD)
+				Grid.matrix.put(tem_key,graph.get(vet).getDistanceFromSource());
+			
 			for (Vertex edge:graph.get(vet).getEdges()){
 				if(!closedset.contains(edge.hashCode()) && !frontier.contains(edge.hashCode()) )
-				{				
-					graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+				{		
+					if (graph.get(edge.hashCode()).getLock()) //if it hits this fake wall
+						graph.get(edge.hashCode()).setDistanceFromSource(LOCK_THRESHOLD);
+					else	
+						graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+					
 					frontier.addLast(edge.hashCode());
 				}
 			}
@@ -122,6 +98,56 @@ public class Grid {
 	}
 	
 	
+	
+	
+	public static int BFSDistance(int source, int target, HashMap<Integer,Vertex> myGraph, char agent_id){
+		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
+		HashSet<Integer> closedset = new HashSet<Integer>();
+		HashMap<Integer,Vertex> graph= new HashMap<Integer,Vertex>(myGraph);
+		if (source==target)
+			return 0;
+		if (!graph.containsKey(target) || !graph.containsKey(source)){  //if source or target accident to be wall;
+			return Integer.MAX_VALUE;
+		}
+		frontier.add(source);
+		graph.get(source).setDistanceFromSource(0);
+		int vet=0;
+		
+		while(!frontier.isEmpty()){
+			vet=frontier.pollFirst();
+			closedset.add(vet);
+			//System.err.println("Investigate:"+graph.get(vet).toString());
+			if (vet==target)
+			{			
+				return graph.get(vet).getDistanceFromSource();
+			}
+			int tem_key=pairSourceTarget(source,vet);
+						
+			for (Vertex edge:graph.get(vet).getEdges()){
+				if(!closedset.contains(edge.hashCode()) && !frontier.contains(edge.hashCode()) )
+				{		
+					if (graph.get(edge.hashCode()).getAgentLock(agent_id)) //if it hits this fake wall
+						graph.get(edge.hashCode()).setDistanceFromSource(LOCK_THRESHOLD);
+					else	
+						graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+					
+					frontier.addLast(edge.hashCode());
+					
+				}
+				else if(closedset.contains(edge.hashCode()) && graph.get(edge.hashCode()).getDistanceFromSource()>=LOCK_THRESHOLD){
+					if((graph.get(vet).getDistanceFromSource()+1)< LOCK_THRESHOLD)
+						graph.get(edge.hashCode()).setDistanceFromSource(graph.get(vet).getDistanceFromSource()+1);
+				}
+				
+			}
+		}		
+		
+		return Integer.MAX_VALUE;
+	}	
+	
+	
+	
+	//abandoned
 	public void BFSDistance(int source){
 		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
 		HashSet<Integer> closedset = new HashSet<Integer>();

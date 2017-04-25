@@ -36,8 +36,8 @@ public abstract class Strategy {
 		return (System.currentTimeMillis() - this.startTime) / 1000f;
 	}
 
-	public abstract Node getAndRemoveLeaf();
 
+	public abstract Node getAndRemoveLeaf();
 	public abstract void addToFrontier(Node n);
 
 	public abstract boolean inFrontier(Node n);

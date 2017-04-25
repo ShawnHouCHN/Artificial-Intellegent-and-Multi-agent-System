@@ -22,13 +22,15 @@ public class Node {
 	public int agentRow;
 	public int agentCol;
 	public int[] agent_loc;
+	public char agent_id;
 	//public char[][] boxes;
 	public boolean[][] walls;
 	public HashMap<Point,Box> boxes;
 	public HashMap<Point,Goal> goals;
+	public HashMap<Integer,Vertex> graph;
 	public Node parent;
 	public Command action;
-
+	public boolean wall_detect;
 	
 	//testing logic 
 	Box currentBox;
@@ -48,15 +50,18 @@ public class Node {
 			this.goals = parent.goals;
 			//this.boxes = new char[parent.boxes.length][parent.boxes[0].length];
 			this.boxes = new HashMap<Point, Box>(parent.boxes);
+			this.graph = parent.graph;
 			this.currentGoal=parent.currentGoal;
 			this.currentBox=parent.currentBox;
+			this.wall_detect=parent.wall_detect;
+			this.agent_id=parent.agent_id;
 		}
 
 	}
 	
 	
-	
-	public Node(Node parent, boolean[][] walls, HashMap<Point,Box> boxes,HashMap<Point,Goal> goals,int[] agent_loc ) {
+
+	public Node(Boolean other_walls, Node parent, boolean[][] walls, HashMap<Point,Box> boxes,HashMap<Point,Goal> goals, HashMap<Integer,Vertex> graph, Box currentBox, Goal currentGoal, int[] agent_loc, char agent_id ) {
 		if (parent == null) {
 			this.g = 0;
 		} else {
@@ -66,27 +71,14 @@ public class Node {
 		this.walls = walls;
 		this.boxes = boxes;
 		this.goals = goals;
-		this.agent_loc = agent_loc;
-		this.agentRow = agent_loc[0];
-		this.agentCol = agent_loc[1];
-	}
-
-
-	public Node(Node parent, boolean[][] walls, HashMap<Point,Box> boxes,HashMap<Point,Goal> goals, Box currentBox, Goal currentGoal, int[] agent_loc ) {
-		if (parent == null) {
-			this.g = 0;
-		} else {
-			this.g = parent.g() + 1;
-		}
-		this.parent = parent;
-		this.walls = walls;
-		this.boxes = boxes;
-		this.goals = goals;
+		this.graph = graph;
+		this.agent_id=agent_id;
 		this.agent_loc = agent_loc;
 		this.agentRow = agent_loc[0];
 		this.agentCol = agent_loc[1];
 		this.currentBox=currentBox;
 		this.currentGoal=currentGoal;
+		this.wall_detect=other_walls;
 		
 	}
 	
@@ -118,6 +110,7 @@ public class Node {
 	
 	//new isgoalstate function for single A* planning
 	public boolean isSingleGoalState() {
+		
 		if (Arrays.equals(this.currentBox.location,this.currentGoal.location))
 			return true;
 		else
@@ -145,9 +138,17 @@ public class Node {
 					n.action = c;
 					n.agentRow = newAgentRow;
 					n.agentCol = newAgentCol;
+					n.agent_loc = new int[]{newAgentRow,newAgentCol};
 					n.boxes = this.boxes;
 					expandedNodes.add(n);
+					
+					//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
+					if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
+						n.g=n.g+Grid.LOCK_THRESHOLD;
 				}
+				
+
+				
 			} else if (c.actType == type.Push) {
 				// Make sure that there's actually a box to move
 				if (this.boxAt(nagent_point)) {
@@ -160,6 +161,7 @@ public class Node {
 						n.action = c;
 						n.agentRow = newAgentRow;
 						n.agentCol = newAgentCol;
+						n.agent_loc = new int[]{newAgentRow,newAgentCol};
 						n.boxes.put(nbox_point, this.boxes.get(nagent_point));
 						n.boxes.remove(nagent_point);
 						expandedNodes.add(n);
@@ -167,6 +169,9 @@ public class Node {
 						//extra logic update currentbox location
 						if(nagent_point.x==this.currentBox.location[0] && nagent_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{nbox_point.x,nbox_point.y});
+						//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
+						if(n.wall_detect && n.graph.get(n.currentBox.hashCode()).getAgentLock(this.agent_id))
+							n.g=n.g+Grid.LOCK_THRESHOLD;
 					}
 				}
 			} else if (c.actType == type.Pull) {
@@ -181,6 +186,7 @@ public class Node {
 						n.action = c;
 						n.agentRow = newAgentRow;
 						n.agentCol = newAgentCol;
+						n.agent_loc = new int[]{newAgentRow,newAgentCol};
 						n.boxes.put(oagent_point, this.boxes.get(nbox_point));
 						n.boxes.remove(nbox_point);
 						expandedNodes.add(n);
@@ -188,6 +194,8 @@ public class Node {
 						//extra logic update currentbox location
 						if(nbox_point.x==this.currentBox.location[0] && nbox_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{oagent_point.x,oagent_point.y});
+						if(n.wall_detect && n.graph.get(n.currentBox.hashCode()).getAgentLock(this.agent_id))
+							n.g=n.g+Grid.LOCK_THRESHOLD;
 					}
 				}
 			}

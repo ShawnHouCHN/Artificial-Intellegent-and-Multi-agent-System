@@ -20,15 +20,14 @@ public class RandomWalkClient {
 	public HashMap<String,ArrayList<Agent>> color_agents=new HashMap<String,ArrayList<Agent>>();
 	public List< Goal > all_goals = new ArrayList< Goal >();
 	public List< Box > all_boxes = new ArrayList< Box >();
-	public HashMap<Integer,Vertex> dij_graph=new HashMap<Integer,Vertex>();
+	public HashMap<Integer,Vertex> initial_graph=new HashMap<Integer,Vertex>();
 	public static boolean[][] all_walls=null;
 	boolean[][] all_frees=null;
-	public static Grid level_grid=null; //this is the grid to save all distance between any pair of locations 
+	public static Grid initial_level_grid=null; //this is the grid to save all distance between any pair of locations 
 		
-	
-	public List<String> conflicts = null;
 	HashMap<Integer, ArrayList<Integer>> pathPositions = new HashMap<Integer, ArrayList<Integer>>();
 	HashMap<Integer, ArrayList<Integer>> boxPaths = new HashMap<Integer, ArrayList<Integer>>();
+	HashMap<Integer, ArrayList<Integer>> conflict2s = new HashMap<Integer, ArrayList<Integer>>();
 	
 	public RandomWalkClient() throws IOException {
 		readMap();
@@ -110,12 +109,11 @@ public class RandomWalkClient {
 		}
 		/*******************************************************************************************/
 		
-
+		
 		
 		/*****************************Create Grid BFS Distance Heuristic****************************/
 		createDistanceMap(); // creat distance map between every pair of locations in the level file.
-		//System.err.println("**************** Start this bxtch ************************");
-		level_grid=new Grid(this.dij_graph);
+		initial_level_grid=new Grid(this.initial_graph);
 		
 		/******************************************************************************************/
 		
@@ -124,20 +122,29 @@ public class RandomWalkClient {
 		/*****************************Create Plan For Each Legal Agent***********************************/
 		for (Character agent_id : all_agents.keySet()){
 			Agent a_agent=all_agents.get(agent_id);
+			int[] init_agent_loc=a_agent.location;
+			
+			a_agent.setInitialGraph(this.initial_graph);
+			
+			a_agent.setInitialWalls(all_walls);
+			
 			a_agent.findMyBoxes(all_boxes,color_agents);
 			//a_agent.printMyBoxes();
 			a_agent.findMyGoals(all_goals);
 			//a_agent.printMyGoals();
-			System.err.println("Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
 			
+			
+			System.err.println("Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
 		}
 		
-		/******************************************************************************************/
+		/*************************************************************************************************/
 		
-		detectConflicts();
-		
+		/*****************************Detect Conflicts among agents' plans********************************/
+ 		detectConflicts();
+		/*************************************************************************************************/
 	
 	}
+	
 	
 	public void computePaths() {
 		// Returns all cell positions in agent's path
@@ -148,8 +155,8 @@ public class RandomWalkClient {
 			int agent_id = Character.getNumericValue(agentID);
 			
 			Agent getAgent = all_agents.get(agentID);
-			int locX = getAgent.initialState.agentCol;
-			int locY = getAgent.initialState.agentRow;
+			int locX = getAgent.init_location[1];
+			int locY = getAgent.init_location[0];
 			
 			int boxX = 0;
 			int boxY = 0;
@@ -166,9 +173,14 @@ public class RandomWalkClient {
 			
 			getAgent.plan.clear();
 			
-			for(int i = 0; i < getAgent.solution.size(); i++) {
-				getAgent.plan.add(getAgent.solution.get(i).action);
-			}			
+			for(Node getAction : getAgent.solution) {
+				getAgent.plan.add(getAction.action);
+			}
+			
+//			for(int i = 0; i < getAgent.solution.size(); i++) {
+//				System.err.println("SECOND: " + getAgent.solution.get(i).action.toString());
+//				getAgent.plan.add(getAgent.solution.get(i).action);
+//			}			
 			
 			ListIterator<Command> listIterator = getAgent.plan.listIterator();
 			while (listIterator.hasNext()) {
@@ -177,7 +189,6 @@ public class RandomWalkClient {
 				//System.err.println("AGENT: " + agent_id + ", LOCATION: (" + locX + ", " + locY + ")");
 	
 				//System.err.println("PATHPOS X: " + pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) + ", PATHPOS Y: " + pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2));
-			
 				
 				switch(getAction.dir1.toString()) {
 					case "N":
@@ -255,8 +266,8 @@ public class RandomWalkClient {
 				
 			}
 			
-			System.err.println("AGENT PATHS: " + pathPositions.get(agent_id));
-			System.err.println("BOXES PATHS: " + boxPaths.get(agent_id));
+			System.err.println("AGENT " + agent_id + " PATHS: " + pathPositions.get(agent_id));
+			System.err.println("BOXES " + agent_id + " PATHS: " + boxPaths.get(agent_id) + "\n");
 			
 		}
 		
@@ -271,8 +282,8 @@ public class RandomWalkClient {
 				//char charI = Integer.toString(i).charAt(0);
 				//char charJ = Integer.toString(j).charAt(0);
 				
-				System.err.println("AGENT " + i + ", " + pathPositions.get(i).size());
-				System.err.println("AGENT " + j + ", " + pathPositions.get(j).size());
+				//System.err.println("AGENT " + i + ", " + pathPositions.get(i).size());
+				//System.err.println("AGENT " + j + ", " + pathPositions.get(j).size());
 				
 				for(int k = 0; k < Math.max(pathPositions.get(i).size(), pathPositions.get(j).size()); k++) {
 					int kb=k;
@@ -283,21 +294,25 @@ public class RandomWalkClient {
 					
 					try {
 						// Detect boxes in path
-						System.err.println("AGENT: (" + pathPositions.get(i).get(k+2) + ", " + pathPositions.get(i).get(k+3) + ")");
-						System.err.println("  BOX: (" + boxPaths.get(j).get(kb) + ", " + boxPaths.get(j).get(kb+1) + ")");
-						System.err.println(" Bool: " + (pathPositions.get(i).get(k+2).equals(boxPaths.get(j).get(kb)) + ", "+ (pathPositions.get(i).get(k+3).equals(boxPaths.get(j).get(kb+1)))));
+						//System.err.println("AGENT: (" + pathPositions.get(i).get(k+2) + ", " + pathPositions.get(i).get(k+3) + ")");
+						//System.err.println("  BOX: (" + boxPaths.get(j).get(kb) + ", " + boxPaths.get(j).get(kb+1) + ")");
+						//System.err.println(" Bool: " + (pathPositions.get(i).get(k+2).equals(boxPaths.get(j).get(kb)) + ", "+ (pathPositions.get(i).get(k+3).equals(boxPaths.get(j).get(kb+1)))));
 
+						// CONFLICTS BETWEEN BOX AND BOX (Push)
 						if((pathPositions.get(i).get(k).equals(boxPaths.get(j).get(kb))) && (pathPositions.get(i).get(k+1).equals(boxPaths.get(j).get(kb+1)))) {
-							//System.err.println("FFFFFFFFFFFFF");
-							System.err.println("BOX CONFLICT DETECTED");
+							System.err.println("BOX CONFLICT DETECTED @ (" + pathPositions.get(i).get(k) + ", " + pathPositions.get(i).get(k+1) + ") AT INDEX " + (k + 1) / 2);
+							//System.err.println("AGENT: (" + pathPositions.get(i).get(k) + ", " + pathPositions.get(i).get(k+1) + ")");
+							//System.err.println("  BOX: (" + boxPaths.get(j).get(kb) + ", " + boxPaths.get(j).get(kb+1) + ")");
 							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
 							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
+							
+							System.err.println("NEW PLAN: " + all_agents.get(Character.forDigit(i, 10)).plan.toString() + "\n");
 						}
 
+						// CONFLICTS BETWEEN AGENTS
 						if((pathPositions.get(i).get(k).equals(pathPositions.get(j).get(k))) && (pathPositions.get(i).get(k+1).equals(pathPositions.get(j).get(k+1))) ||
 								(pathPositions.get(i).get(k).equals(pathPositions.get(j).get(k+2))) && (pathPositions.get(i).get(k+1).equals(pathPositions.get(j).get(k+3))) ||
 								(pathPositions.get(i).get(k+2).equals(pathPositions.get(j).get(k))) && (pathPositions.get(i).get(k+3).equals(pathPositions.get(j).get(k+1)))) {
-							// Check if there are any matching coordinates (conflicts) between any two agents
 							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + i + " & " + j + ", @ (" + pathPositions.get(j).get(k) + "," + pathPositions.get(j).get(k+1) + ") AT INDEX " + (k + 1) / 2);
 							//System.err.println("COMMAND:" + Command.every[0].toString());
 							
@@ -305,12 +320,11 @@ public class RandomWalkClient {
 							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
 							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
 							
+							System.err.println("NEW PLAN: " + all_agents.get(Character.forDigit(i, 10)).plan.toString() + "\n");
+							
 							// Need to change 2 NoOp solution
 							break;
 						}
-						
-
-						
 						
 						// TO DO:
 						// - Detect boxes (2 NoOps, replan after)
@@ -328,23 +342,15 @@ public class RandomWalkClient {
 				
 			}
 			
-			System.err.println("NEW PLAN: " + all_agents.get(Character.forDigit(i, 10)).plan.toString());
 		}
 		
 	}
 	
-	
-	private String type(Command command) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	public boolean update() throws IOException {
 		String jointAction = "[";
 
-		for (Character agent_id : all_agents.keySet()) {
+		for (Character agent_id : all_agents.keySet()) 
 			jointAction += all_agents.get( agent_id ).act() + ",";
-		}
 		
 		jointAction = jointAction.substring(0,jointAction.length()-1)  + "]";
 
@@ -357,7 +363,6 @@ public class RandomWalkClient {
 		// Disregard these for now, but read or the server stalls when its output buffer gets filled!
 		String percepts = in.readLine();
 		System.err.println( "percepts: "+ percepts );
-		
 		if ( percepts == null )
 			return false;
 
@@ -372,8 +377,8 @@ public class RandomWalkClient {
 					//do dijkstra mapping below
 					Vertex dj_vertex= new Vertex(frow,fcol);
 					//four directions
-					if(!dij_graph.containsKey(dj_vertex.hashCode())){
-						dij_graph.put(dj_vertex.hashCode(), dj_vertex);	
+					if(!initial_graph.containsKey(dj_vertex.hashCode())){
+						initial_graph.put(dj_vertex.hashCode(), dj_vertex);	
 						Vertex dj_adj_vertex;
 						if (all_frees[frow-1][fcol]){
 							dj_adj_vertex = new Vertex(frow-1,fcol);
