@@ -3,6 +3,7 @@ package sampleclients;
 import java.awt.Point;
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import sampleclients.Command.dir;
 import sampleclients.Command.type;
@@ -25,9 +26,9 @@ public class RandomWalkClient {
 	boolean[][] all_frees=null;
 	public static Grid initial_level_grid=null; //this is the grid to save all distance between any pair of locations 
 		
+	public List<String> conflicts = null;
 	HashMap<Integer, ArrayList<Integer>> pathPositions = new HashMap<Integer, ArrayList<Integer>>();
 	HashMap<Integer, ArrayList<Integer>> boxPaths = new HashMap<Integer, ArrayList<Integer>>();
-	HashMap<Integer, ArrayList<Integer>> conflict2s = new HashMap<Integer, ArrayList<Integer>>();
 	
 	public RandomWalkClient() throws IOException {
 		readMap();
@@ -134,7 +135,8 @@ public class RandomWalkClient {
 			//a_agent.printMyGoals();
 			
 			
-			System.err.println("Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
+			System.err.println("Successful Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
+			System.err.println("Location of agent:"+a_agent.id+ " along the plan is:"+a_agent.agent_plan.toString());
 		}
 		
 		/*************************************************************************************************/
@@ -274,6 +276,69 @@ public class RandomWalkClient {
 	}
 	
 	public void detectConflicts() {
+
+		for (Entry<Character, Agent> agentA: all_agents.entrySet()){
+			Agent agent_one=agentA.getValue();
+			
+			for (Entry<Character, Agent> agentB: all_agents.entrySet()){
+				Agent agent_two = agentB.getValue();
+				
+				if(agent_one.id >= agent_two.id)
+					continue;
+				
+				for(int i = 0; i < Math.max(agent_one.agent_plan.size(), agent_two.agent_plan.size()); i++) {
+					
+					try {
+						if(agent_one.agent_plan.get(i).equals(agent_two.agent_plan.get(i))) {
+							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + agent_one.id + " & " + agent_two.id + ", @ " + agent_two.agent_plan.get(i) + " AT INDEX " + i);
+							
+							// Add NoOp
+							agent_one.plan.add(i, new Command());
+							agent_one.agent_plan.add(i,agent_one.agent_plan.get(i));
+							
+							System.err.println("AGENT " + agent_one.id + ", NEW PLAN A: " + agent_one.plan.toString() + "\n");
+							
+//							break;
+						}
+						
+						if(agent_one.agent_plan.get(i).equals(agent_two.agent_plan.get(i+1))) {
+							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + agent_one.id + " & " + agent_two.id + ", @ " + agent_two.agent_plan.get(i) + " AT INDEX " + i);
+							
+							// Add NoOp
+							agent_one.plan.add(i, new Command());
+							agent_one.agent_plan.add(i,agent_one.agent_plan.get(i));
+							
+							System.err.println("AGENT " + agent_one.id + ", NEW PLAN B: " + agent_one.plan.toString() + "\n");
+							
+//							break;
+						}
+						
+						if(agent_one.agent_plan.get(i+1).equals(agent_two.agent_plan.get(i))) {
+							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + agent_one.id + " & " + agent_two.id + ", @ " + agent_two.agent_plan.get(i) + " AT INDEX " + i);
+							
+							// Add NoOp
+							agent_one.plan.add(i, new Command());
+							agent_one.agent_plan.add(i,agent_one.agent_plan.get(i));
+							
+							System.err.println("AGENT " + agent_one.id + ", NEW PLAN C: " + agent_one.plan.toString() + "\n");
+							
+//							break;
+						}
+						
+					} catch(Exception e) {
+						// OUT OF BOUNDS
+						System.err.println("OUT OF BOUNDS");
+					}
+					
+				}
+				
+			}
+		}
+		
+	}
+	
+	
+	public void detectConflictsOld() {
 		// Loop through lists to detect conflicts.
 		computePaths();
 		
@@ -296,7 +361,7 @@ public class RandomWalkClient {
 						// Detect boxes in path
 						//System.err.println("AGENT: (" + pathPositions.get(i).get(k+2) + ", " + pathPositions.get(i).get(k+3) + ")");
 						//System.err.println("  BOX: (" + boxPaths.get(j).get(kb) + ", " + boxPaths.get(j).get(kb+1) + ")");
-						//System.err.println(" Bool: " + (pathPositions.get(i).get(k+2).equals(boxPaths.get(j).get(kb)) + ", "+ (pathPositions.get(i).get(k+3).equals(boxPaths.get(j).get(kb+1)))));
+						//System.err.println(" Bool: " + (pathPositions.ge(i).get(k+2).equals(boxPaths.get(j).get(kb)) + ", "+ (pathPositions.get(i).get(k+3).equals(boxPaths.get(j).get(kb+1)))));
 
 						// CONFLICTS BETWEEN BOX AND BOX (Push)
 						if((pathPositions.get(i).get(k).equals(boxPaths.get(j).get(kb))) && (pathPositions.get(i).get(k+1).equals(boxPaths.get(j).get(kb+1)))) {
@@ -345,6 +410,7 @@ public class RandomWalkClient {
 		}
 		
 	}
+	
 	
 	public boolean update() throws IOException {
 		String jointAction = "[";
