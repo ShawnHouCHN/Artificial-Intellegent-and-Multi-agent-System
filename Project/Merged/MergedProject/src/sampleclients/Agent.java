@@ -27,12 +27,13 @@ public class Agent {
 	char id;
 	String color;
 	int[] location;
-	int[] init_location;
+	public int[] init_location;
 	public HashMap<Point, Goal > myGoals = new HashMap<Point, Goal >();
 	public HashMap<Point, Box > myBoxes = new HashMap<Point, Box >();
 	public HashMap<Point, Box > myInitBoxes = new HashMap<Point, Box >();
 	public boolean[][] myWalls;
 	public HashMap<Point, Box > restBoxes = new HashMap<Point, Box>();
+	public HashMap<Point, Goal > restGoals = new HashMap<Point, Goal>();
 	public HashMap<Integer,Vertex> myGraph;
 	public LinkedList<Command> plan=new LinkedList<Command>();
 	public LinkedList<Point> agent_plan=new LinkedList<Point>();
@@ -85,6 +86,12 @@ public class Agent {
 			myGoals.put(new Point(mygoal.location[0],mygoal.location[1]),mygoal);
 			mygoal.claimed=true;
 			esm_sum_dis=esm_sum_dis+dis;
+		} 
+		
+		for(Goal other_goal: goals){
+			if(!myGoals.containsKey(new Point(other_goal.location[0],other_goal.location[1]))){
+				restGoals.put(new Point(other_goal.location[0],other_goal.location[1]), other_goal);
+			}
 		}
 			
 	}
@@ -170,7 +177,7 @@ public class Agent {
 
 
 	
-	public int createPlan(){ 
+	public int createInitPlan(){ 
 		System.err.println("MY ID is: "+this.id);
 		System.err.println("My boxes "+myBoxes.values().toString());
 		System.err.println("My goals "+myGoals.values().toString());
@@ -203,13 +210,45 @@ public class Agent {
 		
 	}
 	
+	public LinkedList<Node> createDetourAltPlan(){
+		System.err.println("Detour rest MY ID is: "+this.id);
+		System.err.println("Detour rest My boxes "+myBoxes.values().toString());
+		System.err.println("Detour rest My goals "+myGoals.values().toString());
+		
+		while(!myBoxes.keySet().containsAll(myGoals.keySet()))
+		{
+
+			FindNextBoxGoal();
+			
+			System.err.println("Agent at: "+this.location[0]+","+this.location[1]+" The box is "+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
+			
+			//true == other boxes are walls / false == other boxes are free spaces
+			boolean aware_others=true;
+			this.initialState = new Node(aware_others, null,RandomWalkClient.all_walls, myBoxes,myGoals,myGraph,currentBox,currentGoal, this.location, this.id);
+			
+			
+			this.strategy= new StrategyBestFirst(new AStar(initialState));
+			LinkedList<Node> singlesolution=new LinkedList<Node>();
+			
+			try {			
+				singlesolution=SearchDetourRestSingle(strategy);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				System.err.println("Exception happened, solution cannot be found!!");
+				e.printStackTrace();
+			}
+			//this.solution.addAll(singlesolution);
+		}
+		return this.solution;
+	}
+	
 	public LinkedList<Node> createDetourPlan(Agent refer_agent, int index){
 		
 
 		HashMap<Point, Box > refersInitBoxes = refer_agent.myInitBoxes;
 		HashMap<Point, Box > refersCurrentBoxes;
 		Point curr_agent;
-		if (index>refer_agent.solution.size()){
+		if (index>=refer_agent.solution.size()){
 			refersCurrentBoxes = refer_agent.solution.getLast().boxes;
 			curr_agent=refer_agent.agent_plan.getLast();
 		}else{
@@ -331,20 +370,20 @@ public class Agent {
 
 	
 	//Single Astar logic
-		public LinkedList<Node> SearchDetourSingle(Strategy strategy, Node resumeState, int index) throws IOException {
+	public LinkedList<Node> SearchDetourSingle(Strategy strategy, Node resumeState, int index) throws IOException {
 			System.err.format("Detour Search starting with strategy Single %s.\n", strategy.toString());
 			strategy.addToFrontier(resumeState);
-			System.err.println("Intial Detour boxes:"+resumeState.boxes.keySet());
-			System.err.println("Intial Detour goals:"+resumeState.goals.keySet());
-			System.err.println("Intial Detour currentbox:"+resumeState.currentBox.toString());
-			System.err.println("Intial Detour currentgoal:"+resumeState.currentGoal.toString());
-			System.err.println("Intial Detour agent loc:"+resumeState.agentRow+","+resumeState.agentCol);
+			//System.err.println("Intial Detour boxes:"+resumeState.boxes.keySet());
+			//System.err.println("Intial Detour goals:"+resumeState.goals.keySet());
+			//System.err.println("Intial Detour currentbox:"+resumeState.currentBox.toString());
+			//System.err.println("Intial Detour currentgoal:"+resumeState.currentGoal.toString());
+			//System.err.println("Intial Detour agent loc:"+resumeState.agentRow+","+resumeState.agentCol);
 			
 			//test code to debug locks 
 //			for (Vertex test: resumeState.graph.values()){
 //				System.err.println("Vertex: "+test.toString()+ "Lock:"+test.getAgentLock('1'));
 //			}
-			System.err.println("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
+			
 			int iterations = 0;
 			while (true) {
 	            if (iterations == 1000) {
@@ -373,8 +412,8 @@ public class Agent {
 							this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
 						
 						leafNode.extractSolution();
-						System.err.println("!!!!Detour path:"+leafNode.agent_plan);
-						
+						System.err.println("!!!!Detour path:"+leafNode.action_plan);
+						//System.err.println("Original path:"+this.plan);
 						int old_plan_length=this.plan.size();
 						int offset=0;
 						for(int detou_step=0; detou_step<leafNode.agent_plan.size();detou_step++){
@@ -389,6 +428,69 @@ public class Agent {
 								this.solution.addLast(leafNode.solution_plan.get(detou_step));								
 							}
 						}
+						//System.err.println("Changed path:"+this.agent_plan);
+						
+						//TEST LOGIC: abandoned old unavalibble steps.
+						int tmp_plan_length=this.agent_plan.size();
+						
+						for(int detour_abandon=tmp_plan_length-1; detour_abandon>(index+leafNode.agent_plan.size()-1);detour_abandon--){
+								this.agent_plan.removeLast();
+								this.plan.removeLast();
+								this.solution.removeLast();
+						}
+						
+						
+						//System.err.println("Cleaned path:"+this.plan);
+						return leafNode.solution_plan;
+					}
+				}
+
+				strategy.addToExplored(leafNode);
+				for (Node n : leafNode.getExpandedNodes()) { // The list of expanded nodes is shuffled randomly; see Node.java.
+					if (!strategy.isExplored(n) && !strategy.inFrontier(n)) {					
+						strategy.addToFrontier(n);
+					}
+				}
+				iterations++;
+			}
+		}
+		
+		//Single Astar logic
+		public LinkedList<Node> SearchDetourRestSingle(Strategy strategy) throws IOException {
+			System.err.format("Search starting with strategy Single %s.\n", strategy.toString());
+			strategy.addToFrontier(this.initialState);
+			
+			int iterations = 0;
+			while (true) {
+	            if (iterations == 1000) {
+					System.err.println(strategy.searchStatus());
+					iterations = 0;
+				}
+
+				if (strategy.frontierIsEmpty()) {
+					System.err.println("Frontier is Empty Now. Weird?");
+					return null;
+				}
+
+				Node leafNode = strategy.getAndRemoveLeaf();
+				if (leafNode.isSingleGoalState()) {
+					boolean valid;
+					//I have to validate the extracted plan here as well. make sure the next plan can continue
+					valid=validateCurrentPlan(currentGoal,new int[]{leafNode.agentRow,leafNode.agentCol});
+					//if it is the last goal to finish, then does not matter where to place agent next
+					
+					if(valid)
+					{
+						this.location=new int[]{leafNode.agentRow,leafNode.agentCol};
+						this.myBoxes=leafNode.boxes;
+						//update box locations for next subplan
+						for (Point box_loc : this.myBoxes.keySet())
+							this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
+						
+						leafNode.extractSolution();
+						this.plan.addAll(leafNode.action_plan);
+						this.agent_plan.addAll(leafNode.agent_plan);
+						this.solution.addAll(leafNode.solution_plan);
 						return leafNode.solution_plan;
 					}
 				}
@@ -529,8 +631,12 @@ public class Agent {
 			}
 		}
 		
-		if(completeness==(myGoals.size()-1))
-			valid=true;
+		
+//		if(completeness==(myGoals.size()-1))
+//			valid=true;
+		
+		if(this.restGoals.containsKey(new Point(agent_location[0],agent_location[1])))
+			valid=false;
 		
 		this.myGraph.get(closest_goal.hashCode()).setLock(false);
 		return valid;

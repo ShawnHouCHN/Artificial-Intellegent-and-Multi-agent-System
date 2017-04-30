@@ -39,6 +39,7 @@ public class Node {
 	public LinkedList<Node> solution_plan;
 	//testing logic 
 	Box currentBox;
+	Box engagedBox;
 	Goal currentGoal;
 	
 	private int g;
@@ -58,6 +59,7 @@ public class Node {
 			this.graph = parent.graph;
 			this.currentGoal=parent.currentGoal;
 			this.currentBox=parent.currentBox;
+			this.engagedBox=parent.engagedBox;
 			this.wall_detect=parent.wall_detect;
 			this.agent_id=parent.agent_id;
 		}
@@ -82,6 +84,7 @@ public class Node {
 		this.agentRow = agent_loc[0];
 		this.agentCol = agent_loc[1];
 		this.currentBox=currentBox;
+		this.engagedBox=currentBox;
 		this.currentGoal=currentGoal;
 		this.wall_detect=other_walls;
 		
@@ -154,6 +157,7 @@ public class Node {
 					n.boxes = this.boxes;
 					expandedNodes.add(n);
 					n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{this.currentBox.location[0],this.currentBox.location[1]});
+					n.engagedBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{this.currentBox.location[0],this.currentBox.location[1]});
 					//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
 					if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
 						n.g=n.g+Grid.LOCK_THRESHOLD;
@@ -177,12 +181,12 @@ public class Node {
 						n.boxes.put(nbox_point, this.boxes.get(nagent_point));
 						n.boxes.remove(nagent_point);
 						expandedNodes.add(n);
-						
+						n.engagedBox=new Box(this.boxes.get(nagent_point).id,this.boxes.get(nagent_point).color,new int[]{nbox_point.x,nbox_point.y});
 						//extra logic update currentbox location
 						if(nagent_point.x==this.currentBox.location[0] && nagent_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{nbox_point.x,nbox_point.y});
 						//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
-						if(n.wall_detect && n.graph.get(n.currentBox.hashCode()).getAgentLock(this.agent_id))
+						if(n.wall_detect && n.graph.get(n.engagedBox.hashCode()).getAgentLock(this.agent_id))
 							n.g=n.g+Grid.LOCK_THRESHOLD;
 					}
 				}
@@ -202,7 +206,7 @@ public class Node {
 						n.boxes.put(oagent_point, this.boxes.get(nbox_point));
 						n.boxes.remove(nbox_point);
 						expandedNodes.add(n);
-						
+						n.engagedBox=new Box(this.boxes.get(nbox_point).id,this.boxes.get(nbox_point).color,new int[]{oagent_point.x,oagent_point.y});
 						//extra logic update currentbox location
 						if(nbox_point.x==this.currentBox.location[0] && nbox_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{oagent_point.x,oagent_point.y});
