@@ -3,6 +3,7 @@ package sampleclients;
 import java.awt.Point;
 import java.io.*;
 import java.util.*;
+import java.util.Map.Entry;
 
 import sampleclients.Command.dir;
 import sampleclients.Command.type;
@@ -17,6 +18,8 @@ public class RandomWalkClient {
 	private static Random rand = new Random();
 	private BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
 	public TreeMap<Character, Agent > all_agents = new TreeMap<Character, Agent >();
+	public Comparator<Agent> agent_plan_comparator = new PlanLengthComparator();
+	public PriorityQueue<Agent> ranked_all_agents = new PriorityQueue<Agent>(agent_plan_comparator);
 	public HashMap<String,ArrayList<Agent>> color_agents=new HashMap<String,ArrayList<Agent>>();
 	public List< Goal > all_goals = new ArrayList< Goal >();
 	public List< Box > all_boxes = new ArrayList< Box >();
@@ -26,8 +29,10 @@ public class RandomWalkClient {
 	public static Grid initial_level_grid=null; //this is the grid to save all distance between any pair of locations 
 		
 	public List<String> conflicts = null;
-	HashMap<Integer, ArrayList<Integer>> pathPositions = new HashMap<Integer, ArrayList<Integer>>();
-	HashMap<Integer, ArrayList<Integer>> boxPaths = new HashMap<Integer, ArrayList<Integer>>();
+
+	
+	public static int NOOP_LOW_THRESHOLD = 2; //set to 3 
+	public static int NOOP_HIGH_THRESHOLD = 5; //set to 3 
 	
 	public RandomWalkClient() throws IOException {
 		readMap();
@@ -129,223 +134,211 @@ public class RandomWalkClient {
 			a_agent.setInitialWalls(all_walls);
 			
 			a_agent.findMyBoxes(all_boxes,color_agents);
-			//a_agent.printMyBoxes();
+
 			a_agent.findMyGoals(all_goals);
-			//a_agent.printMyGoals();
+
 			
-			
+			//			for (Node a: a_agent.solution){
+//				System.err.println("The boxes at this momnet:"+a.boxes.keySet().toString());
+//			}
+		}
+		
+		for (Character agent_id : all_agents.keySet()){
+			Agent a_agent=all_agents.get(agent_id);
 			System.err.println("Successful Create plan for agent "+a_agent.id+ ": with length="+a_agent.createPlan());
 			System.err.println("Location of agent:"+a_agent.id+ " along the plan is:"+a_agent.agent_plan.toString());
+			
+			ranked_all_agents.add(a_agent);	
+			
 		}
 		
 		/*************************************************************************************************/
 		
+		
 		/*****************************Detect Conflicts among agents' plans********************************/
- 		//detectConflicts();
+		resolveConflicts();
 		/*************************************************************************************************/
 	
 	}
 	
-	
-	public void computePaths() {
-		// Returns all cell positions in agent's path
-		pathPositions.clear();
-		
-		for (Character agentID : all_agents.keySet()){
-			//int agent_id = Integer.toString(agentID).charAt(0);
-			int agent_id = Character.getNumericValue(agentID);
-			
-			Agent getAgent = all_agents.get(agentID);
-			int locX = getAgent.init_location[1];
-			int locY = getAgent.init_location[0];
-			
-			int boxX = 0;
-			int boxY = 0;
-			
-			//System.err.println("AGENT " + agent_id + ", INITIAL LOCATION: " +  + locX + ", " + locY);
-			
-			pathPositions.put(agent_id, new ArrayList<Integer>());
-			pathPositions.get(agent_id).add(locY);
-			pathPositions.get(agent_id).add(locX);
-			
-			boxPaths.put(agent_id, new ArrayList<Integer>());
-			boxPaths.get(agent_id).add(boxY);
-			boxPaths.get(agent_id).add(boxX);
-			
-			getAgent.plan.clear();
-			
-			for(Node getAction : getAgent.solution) {
-				getAgent.plan.add(getAction.action);
-			}
-			
-//			for(int i = 0; i < getAgent.solution.size(); i++) {
-//				System.err.println("SECOND: " + getAgent.solution.get(i).action.toString());
-//				getAgent.plan.add(getAgent.solution.get(i).action);
-//			}			
-			
-			ListIterator<Command> listIterator = getAgent.plan.listIterator();
-			while (listIterator.hasNext()) {
-				Command getAction = listIterator.next(); 
-				//System.err.println("AGENT: " + agent_id + ", DIR1: " + getAction.dir1 + ", DIR2: " + getAction.dir2);
-				//System.err.println("AGENT: " + agent_id + ", LOCATION: (" + locX + ", " + locY + ")");
-	
-				//System.err.println("PATHPOS X: " + pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) + ", PATHPOS Y: " + pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2));
-				
-				switch(getAction.dir1.toString()) {
-					case "N":
-						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2) - 1;
-						break;
-					case "S":
-						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2) + 1;
-						break;
-					case "W":
-						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) - 1;
-						break;
-					case "E":
-						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1) + 1;
-						break;
-					default:
-						locY = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 2);
-						locX = pathPositions.get(agent_id).get(pathPositions.get(agent_id).size() - 1);
-				}
-				
-				if(getAction.actType.toString().equals("Push")) {
-					switch(getAction.dir2.toString()) {
-						case "N":
-							boxY = locY - 1;
-							boxX = locX;
-							break;
-						case "S":
-							boxY = locY + 1;
-							boxX = locX;
-							break;
-						case "W":
-							boxX = locX - 1;
-							boxY = locY;
-							break;
-						case "E":
-							boxX = locX + 1;
-							boxY = locY;
-							break;
-						default:
-							boxY = locY;
-							boxX = locX;
+	public void resolveConflicts(){
+		while(ranked_all_agents.size()!=0){
+			Agent lightest_agent=ranked_all_agents.poll();
+			for (Entry<Character, Agent> agentA: all_agents.entrySet()){
+				Agent subject_agent=agentA.getValue();
+				int detour_length=0;
+				if(subject_agent.id==lightest_agent.id)
+					continue;
+				else{
+					int i=0;
+					while(i < subject_agent.solution.size()){
+						Point subject_agent_loc=subject_agent.agent_plan.get(i);
+						Box subject_engaged_box=subject_agent.solution.get(i).currentBox;
+						//if subject agent at this step is in the quarantine zone.
+						if(isInQuarantineZone(lightest_agent,subject_agent_loc,subject_engaged_box, i)){	
+							System.err.println("Agent :"+subject_agent.id+" enters quarantine zone of "+lightest_agent.id+" at index:"+i+" at location: "+subject_agent.agent_plan.get(i).toString());
+							int waiting_time=lightest_agent.plan.size()-i;
+							//if(isGoalInQuarantineZone())
+							//Do a replan + noops. 
+							subject_agent.createDetourPlan(lightest_agent, i);
+											
+//							
+//							for(int wait=0;wait<waiting_time;wait++){
+//								subject_agent.plan.add(i, new Command());
+//								subject_agent.agent_plan.add(i,subject_agent.agent_plan.get(i));
+//								//subject_agent.solution.add(i,subject_agent.solution.get(i));
+//							}
+							//break;
+						}
+						i++;
 					}
-					
 				}
-				
-				if(getAction.actType.toString().equals("Pull")) {
-					switch(getAction.dir1.toString()) {
-						case "N":
-							boxY = locY + 1;
-							boxX = locX;
-							break;
-						case "S":
-							boxY = locY - 1;
-							boxX = locX;
-							break;
-						case "W":
-							boxX = locX + 1;
-							boxY = locY;
-							break;
-						case "E":
-							boxX = locX - 1;
-							boxY = locY;
-							break;
-						default:
-							boxY = locY;
-							boxX = locX;
-					}
-					
-				}
-				
-				boxPaths.get(agent_id).add(boxY);
-				boxPaths.get(agent_id).add(boxX);
-				
-				pathPositions.get(agent_id).add(locY);
-				pathPositions.get(agent_id).add(locX);
-				
+				if(detour_length==0)
+					break;
 			}
-			
-			System.err.println("AGENT " + agent_id + " PATHS: " + pathPositions.get(agent_id));
-			System.err.println("BOXES " + agent_id + " PATHS: " + boxPaths.get(agent_id) + "\n");
 			
 		}
+	}
+	
+	public boolean isInQuarantineZone(Agent lightest_agent, Point subject_agent_loc, Box subject_engaged_box, int index){
+		HashMap<Point, Box> lightest_agent_boxes;
+		HashMap<Point, Goal> lightest_agent_goals;
+		LinkedList<Point> lightest_agent_path=lightest_agent.agent_plan;
+		if(index>=lightest_agent.solution.size()){
+			lightest_agent_boxes=lightest_agent.solution.getLast().boxes;
+			lightest_agent_goals=lightest_agent.solution.getLast().goals;
+		}else{
+			lightest_agent_boxes=lightest_agent.solution.get(index).boxes;
+			lightest_agent_goals=lightest_agent.solution.get(index).goals;
+		}
+		 
 		
+		Point engaged_box_loc=new Point(subject_engaged_box.location[0], subject_engaged_box.location[1]);
+		if(lightest_agent_path.contains(subject_agent_loc) || lightest_agent_boxes.keySet().contains(subject_agent_loc) || lightest_agent_goals.keySet().contains(subject_agent_loc)){
+			return true;
+		}else if(lightest_agent_path.contains(engaged_box_loc) || lightest_agent_boxes.keySet().contains(engaged_box_loc) || lightest_agent_goals.keySet().contains(engaged_box_loc)){
+			return true;
+		}
+		else{
+			return false;
+		}
 	}
 	
 	public void detectConflicts() {
-		// Loop through lists to detect conflicts.
-		computePaths();
-		
-		for(int i = 0; i < all_agents.size() - 1; i++) {
-			for(int j = i+1; j < all_agents.size(); j++) {
-				//char charI = Integer.toString(i).charAt(0);
-				//char charJ = Integer.toString(j).charAt(0);
+
+		for (Entry<Character, Agent> agentA: all_agents.entrySet()){
+			Agent agent_one=agentA.getValue();
+			
+			for (Entry<Character, Agent> agentB: all_agents.entrySet()){
+				Agent agent_two = agentB.getValue();
 				
-				//System.err.println("AGENT " + i + ", " + pathPositions.get(i).size());
-				//System.err.println("AGENT " + j + ", " + pathPositions.get(j).size());
+				if(agent_one.id >= agent_two.id)
+					continue;
 				
-				for(int k = 0; k < Math.max(pathPositions.get(i).size(), pathPositions.get(j).size()); k++) {
-					int kb=k;
-					if (k>boxPaths.get(j).size()-2){
-						kb=boxPaths.get(j).size()-2;
-					}
-					//System.err.println("kb " +kb);
+				try {
+					int i=0;
 					
-					try {
-						// Detect boxes in path
-						//System.err.println("AGENT: (" + pathPositions.get(i).get(k+2) + ", " + pathPositions.get(i).get(k+3) + ")");
-						//System.err.println("  BOX: (" + boxPaths.get(j).get(kb) + ", " + boxPaths.get(j).get(kb+1) + ")");
-						//System.err.println(" Bool: " + (pathPositions.get(i).get(k+2).equals(boxPaths.get(j).get(kb)) + ", "+ (pathPositions.get(i).get(k+3).equals(boxPaths.get(j).get(kb+1)))));
-
-						// CONFLICTS BETWEEN BOX AND BOX (Push)
-						if((pathPositions.get(i).get(k).equals(boxPaths.get(j).get(kb))) && (pathPositions.get(i).get(k+1).equals(boxPaths.get(j).get(kb+1)))) {
-							System.err.println("BOX CONFLICT DETECTED @ (" + pathPositions.get(i).get(k) + ", " + pathPositions.get(i).get(k+1) + ") AT INDEX " + (k + 1) / 2);
-							//System.err.println("AGENT: (" + pathPositions.get(i).get(k) + ", " + pathPositions.get(i).get(k+1) + ")");
-							//System.err.println("  BOX: (" + boxPaths.get(j).get(kb) + ", " + boxPaths.get(j).get(kb+1) + ")");
-							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
-							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
+					while(i < Math.max(agent_one.agent_plan.size(), agent_two.agent_plan.size())) {
+						//agent one = agent with smaller id / agent two = agent with greater id.
+						Point agentone_loc=agent_one.agent_plan.get(i);
+						Point agentone_next_loc=agent_one.agent_plan.get(i+1);
+						Point agenttwo_loc=agent_two.agent_plan.get(i); 
+						Point agenttwo_next_loc=agent_two.agent_plan.get(i+1);
+						HashMap<Point, Box> agentone_iboxes=agent_one.solution.get(i).boxes;
+						HashMap<Point, Box> agenttwo_iboxes=agent_two.solution.get(i).boxes;
+						Box agentone_currentbox=agent_one.solution.get(i).currentBox;
+						Box agenttwo_currentbox=agent_two.solution.get(i).currentBox;
+						Command agentone_command=agent_one.solution.get(i).action;
+						Command agenttwo_command=agent_two.solution.get(i).action;
+						//Case 1: both agents go to same loc/ or an agent next move walks into another agent current place
+						if((agentone_loc.equals(agenttwo_loc) || agentone_loc.equals(agenttwo_next_loc) || agentone_next_loc.equals(agenttwo_loc))) {
+							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + agent_one.id + " & " + agent_two.id + ", @ " + agent_two.agent_plan.get(i) + " AT INDEX " + i);												
+							int waiting_time=noopAndWaitConflict(agent_one, agent_two, i);					
 							
-							System.err.println("NEW PLAN: " + all_agents.get(Character.forDigit(i, 10)).plan.toString() + "\n");
+							//if waiting time == MAX THRESHOLD, it means one agent has terminated. do replan to put that agent to a spare location.
+							//this feed
+							
+							
+							//else
+							// Add NoOp
+							for(int wait=0;wait<3;wait++){
+								agent_one.plan.add(i, new Command());
+								agent_one.agent_plan.add(i,agent_one.agent_plan.get(i));
+								agent_one.solution.add(i,agent_one.solution.get(i));
+							}
+							
+							//########
+							
+							
+							
+							System.err.println("AGENT " + agent_one.id + ", NEW PLAN (Two agents, same locs): " + agent_one.plan.toString() + "\n");
+							
 						}
-
-						// CONFLICTS BETWEEN AGENTS
-						if((pathPositions.get(i).get(k).equals(pathPositions.get(j).get(k))) && (pathPositions.get(i).get(k+1).equals(pathPositions.get(j).get(k+1))) ||
-								(pathPositions.get(i).get(k).equals(pathPositions.get(j).get(k+2))) && (pathPositions.get(i).get(k+1).equals(pathPositions.get(j).get(k+3))) ||
-								(pathPositions.get(i).get(k+2).equals(pathPositions.get(j).get(k))) && (pathPositions.get(i).get(k+3).equals(pathPositions.get(j).get(k+1)))) {
-							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + i + " & " + j + ", @ (" + pathPositions.get(j).get(k) + "," + pathPositions.get(j).get(k+1) + ") AT INDEX " + (k + 1) / 2);
-							//System.err.println("COMMAND:" + Command.every[0].toString());
-							
-							// Add 2 x NoOp if conflict detected
-							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
-							all_agents.get(Character.forDigit(i, 10)).plan.add((k + 1) / 2 - 1, new Command());
-							
-							System.err.println("NEW PLAN: " + all_agents.get(Character.forDigit(i, 10)).plan.toString() + "\n");
-							
-							// Need to change 2 NoOp solution
-							break;
-						}
-						
-						// TO DO:
-						// - Detect boxes (2 NoOps, replan after)
-						// - Detect non-moving agents
-						// - 
 						
 						
-						k++;
-					} catch(Exception e) {
-						//System.err.println("DED!" );
-						k++;
+//						//Case 4, agent two goes to a stationary box belonged to agent one
+//						else if(agentone_iboxes.containsKey(agenttwo_loc) || agentone_iboxes.containsKey(agenttwo_next_loc)){
+//							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: "  + agent_two.id + " runs into " + agent_one.id+ " Boxes " + agent_one.agent_plan.get(i) + " AT INDEX " + i);
+//						
+//							//wait and see for a moment and then detour for agent two
+//						
+//						}
+//						
+//						//Case 5, agent one goes to a stationary box belonged to agent two
+//						else if(agenttwo_iboxes.containsKey(agentone_loc) || agenttwo_iboxes.containsKey(agentone_next_loc)){
+//							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: "  + agent_one.id + " runs into " + agent_two.id+ " Boxes " + agent_two.agent_plan.get(i) + " AT INDEX " + i);
+//						}
+						i++;
+						
+					} 
+					
+				}catch(Exception e) {
+						// OUT OF BOUNDS
+						System.err.println("OUT OF BOUNDS");
 					}
+					
 				}
-
 				
 			}
-			
-		}
+		
 		
 	}
+
+	//recursive code checking whether there is a conflict in the further steps
+//	public int noopAndReviewConflict(Agent defendant, Agent complainant, int step_index){
+//		int waiting_length;
+//		int com_rest=complainant.agent_plan.size()-step_index;
+//		while((step_index+NOOP_LOW_THRESHOLD)<=complainant.agent_plan.size()){
+//			Point def_agent_loc=defendant.agent_plan.get(step_index);
+//			Point com_agent_loc=complainant.agent_plan.get(step_index+waiting_steps);	
+//			if(def_agent_loc.equals(com_agent_loc)){
+//				waiting_length=NOOP_LOW_THRESHOLD*2;
+//				return noopAndReviewConflict(waiting_length, defendant, complainant, step_index);
+//			}else{
+//				return waiting_steps;
+//			}
+//		}
+//		
+//
+//		return 0;
+//	}
+	
+	//recursive code checking whether there is a conflict in the further steps
+	public int noopAndWaitConflict(Agent defendant, Agent complainant, int step_index){
+		int waiting_length=0;
+		Point def_agent_loc=defendant.agent_plan.get(step_index);
+		for(int start=step_index+NOOP_LOW_THRESHOLD; start<=(step_index+NOOP_HIGH_THRESHOLD); start++){
+			Point com_agent_loc=complainant.agent_plan.get(start);
+			if(com_agent_loc.equals(def_agent_loc))
+				waiting_length=start-step_index+NOOP_LOW_THRESHOLD;
+		}
+		
+		return waiting_length;
+	}
+	
+	
+	
+	
 	
 	
 	public boolean update() throws IOException {

@@ -5,12 +5,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 
 import sampleclients.Command.type;
 import sampleclients.Agent;
@@ -120,7 +122,14 @@ public class Node {
 			return false;
 	}	
 	
-	
+	//new isgoalstate function for single A* detour planning
+	public boolean isSingleDetourGoalState() {
+		
+		if (Arrays.equals(this.currentBox.location,this.currentGoal.location) && this.g<Grid.LOCK_THRESHOLD)
+			return true;
+		else
+			return false;
+	}	
 	
 	//updated get expanded nodes;
 	public ArrayList<Node> getExpandedNodes() {
@@ -144,7 +153,7 @@ public class Node {
 					n.agent_loc = new int[]{newAgentRow,newAgentCol};
 					n.boxes = this.boxes;
 					expandedNodes.add(n);
-					
+					n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{this.currentBox.location[0],this.currentBox.location[1]});
 					//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
 					if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
 						n.g=n.g+Grid.LOCK_THRESHOLD;
@@ -197,7 +206,7 @@ public class Node {
 						//extra logic update currentbox location
 						if(nbox_point.x==this.currentBox.location[0] && nbox_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{oagent_point.x,oagent_point.y});
-						if(n.wall_detect && n.graph.get(n.currentBox.hashCode()).getAgentLock(this.agent_id))
+						if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
 							n.g=n.g+Grid.LOCK_THRESHOLD;
 					}
 				}
