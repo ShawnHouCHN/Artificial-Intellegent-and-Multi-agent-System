@@ -84,7 +84,7 @@ public class Node {
 		this.agentRow = agent_loc[0];
 		this.agentCol = agent_loc[1];
 		this.currentBox=currentBox;
-		this.engagedBox=currentBox;
+		this.engagedBox=null; //no engaged box at beginning....
 		this.currentGoal=currentGoal;
 		this.wall_detect=other_walls;
 		
@@ -119,7 +119,7 @@ public class Node {
 	//new isgoalstate function for single A* planning
 	public boolean isSingleGoalState() {
 		
-		if (Arrays.equals(this.currentBox.location,this.currentGoal.location))
+		if (Arrays.equals(this.currentBox.location,this.currentGoal.location) && this.g<Grid.LOCK_THRESHOLD)
 			return true;
 		else
 			return false;
@@ -255,8 +255,8 @@ public class Node {
 			int result = 1;
 			result = prime * result + this.agentCol;
 			result = prime * result + this.agentRow;
-			result = prime * result + this.boxes.hashCode();
-			result = prime * result + this.goals.hashCode();
+			result = prime * result + this.boxes.keySet().hashCode();
+			result = prime * result + this.goals.keySet().hashCode();
 			result = prime * result + Arrays.deepHashCode(this.walls);
 			this._hash = result;
 		}

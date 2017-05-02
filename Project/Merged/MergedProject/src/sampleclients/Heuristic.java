@@ -52,12 +52,17 @@ public abstract class Heuristic implements Comparator<Node> {
 		
 		Iterator<Point> ite_goal = goal_locs.iterator();
 		Point agoal;
+		int bonus=0;
 		while(ite_goal.hasNext()){
 			dis=Integer.MAX_VALUE;
 			//min_agent_to_box=Integer.MAX_VALUE;
 			clsboxx=0;
 			clsboxy=0;
 			agoal=ite_goal.next();
+			if(agoal.x==n.currentGoal.location[0] && agoal.y==n.currentGoal.location[1]){
+				bonus=RandomWalkClient.initial_level_grid.getBFSDistance(n.agent_loc,n.currentBox.location)+RandomWalkClient.initial_level_grid.getBFSDistance(n.currentGoal.location,n.currentBox.location)-1;
+				continue;
+			}
 			Iterator<Point> ite_box = box_locs.iterator();
 			Point abox=null;
 			Point aclsbox=null;
@@ -78,7 +83,7 @@ public abstract class Heuristic implements Comparator<Node> {
 			sumdistance=sumdistance+dis;
 		}
 		
-		return sumdistance;
+		return (sumdistance+bonus);
 
 		
 

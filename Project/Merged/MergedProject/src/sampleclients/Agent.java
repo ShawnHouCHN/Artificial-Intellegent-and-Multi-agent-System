@@ -4,6 +4,7 @@ import java.awt.Point;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -37,8 +38,9 @@ public class Agent {
 	public HashMap<Integer,Vertex> myGraph;
 	public LinkedList<Command> plan=new LinkedList<Command>();
 	public LinkedList<Point> agent_plan=new LinkedList<Point>();
+	public LinkedList<int[]> agent_start_plan=new LinkedList<int[]>();
 	public LinkedList<Node> solution=new LinkedList<Node>();
-	public HashMap<Integer, LinkedList<Node>> subplanboard=new HashMap<Integer, LinkedList<Node>>();
+	public HashMap<Integer, Subplan> subplanboard=new HashMap<Integer, Subplan>();
 	public Strategy strategy;
 	public Node initialState;
 	public int esm_sum_dis;
@@ -72,17 +74,19 @@ public class Agent {
 			for (int i = 0; i < goals.size(); i++){
 				Goal a_goal=goals.get(i);
 				int box2goal=RandomWalkClient.initial_level_grid.getBFSDistance(mybox.location,a_goal.location);
-				if(Character.toUpperCase(a_goal.id)==mybox.id && box2goal<=dis && !a_goal.claimed){
-					if(box2goal==dis){ //goal same dis to a box
-						int agent2lastgoal=RandomWalkClient.initial_level_grid.getBFSDistance(this.location,mygoal.location);
-						int agent2nowgoal=RandomWalkClient.initial_level_grid.getBFSDistance(this.location,a_goal.location);
-						if(agent2lastgoal<=agent2nowgoal)
-							continue;
-					}
+				if(Character.toUpperCase(a_goal.id)==mybox.id && box2goal<dis && !a_goal.claimed){
+//					if(box2goal==dis){ //goal same dis to a box
+//						int agent2lastgoal=RandomWalkClient.initial_level_grid.getBFSDistance(this.location,mygoal.location);
+//						int agent2nowgoal=RandomWalkClient.initial_level_grid.getBFSDistance(this.location,a_goal.location);
+//						if(agent2lastgoal<=agent2nowgoal)
+//							continue;
+//					}
 					dis=box2goal;
 					mygoal=a_goal;
 				}
 			}
+			if(mygoal==null)
+				continue;
 			myGoals.put(new Point(mygoal.location[0],mygoal.location[1]),mygoal);
 			mygoal.claimed=true;
 			esm_sum_dis=esm_sum_dis+dis;
@@ -102,6 +106,7 @@ public class Agent {
 			Box a_box=boxes.get(i);
 			Box copy_box=new Box(a_box.id,a_box.color,a_box.location);
 			int agent2box=RandomWalkClient.initial_level_grid.getBFSDistance(a_box.location,this.location);
+			//System.err.println("Agent to box:"+a_box.id+a_box.color+" dis: "+agent2box);
 			if(a_box.color.equals(this.color) && agent2box!=Integer.MAX_VALUE && !a_box.claimed){
 				//TEST LOGIC, Load Balancer logic
 				int closest_agent=Integer.MAX_VALUE;
@@ -116,12 +121,13 @@ public class Agent {
 					a_box.claimed=true;
 					copy_box.claimed=true;
 					esm_sum_dis=esm_sum_dis+closest_agent;
+					System.err.println("For agent "+this.id+","+a_box.id+a_box.color+" dis: "+agent2box);
 				}
 			}
 			
 			if(!myBoxes.containsKey(new Point(a_box.location[0],a_box.location[1])))
 			{
-				System.err.println("This:"+a_box.toString()+" is a barrier");
+				System.err.println("For agent "+this.id+" This:"+a_box.toString()+" is a barrier");
 				restBoxes.put(new Point(a_box.location[0],a_box.location[1]), a_box);
 				this.myGraph.get(a_box.hashCode()).setAgentLock(this.id, true);
 			}
@@ -182,23 +188,35 @@ public class Agent {
 		System.err.println("My boxes "+myBoxes.values().toString());
 		System.err.println("My goals "+myGoals.values().toString());
 		
+		int subplan_key=0;
 		while(!myBoxes.keySet().containsAll(myGoals.keySet()))
 		{
 
 			FindNextBoxGoal();
 			
 			System.err.println("Agent at: "+this.location[0]+","+this.location[1]+" The box is "+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
-			
+			Box init_box=new Box(currentBox.id,currentBox.color,currentBox.location);
 			//true == other boxes are walls / false == other boxes are free spaces
 			boolean aware_others=true;
 			this.initialState = new Node(aware_others, null,RandomWalkClient.all_walls, myBoxes,myGoals,myGraph,currentBox,currentGoal, this.location, this.id);
 			
 			
 			this.strategy= new StrategyBestFirst(new AStar(initialState));
-			LinkedList<Node> singlesolution=new LinkedList<Node>();
+			//Node singlesolution=new LinkedList<Node>();
 			
 			try {			
-				singlesolution=SearchSingle(strategy);
+				Node singlesolution=SearchSingle(strategy);
+				if(singlesolution==null)
+				{
+					System.err.println("Current goal or box is unreachable if seeing other boxes as walls PLAN B(Seeing others as passable walls)");
+					aware_others=false;
+					this.initialState = new Node(aware_others, null,RandomWalkClient.all_walls, myBoxes,myGoals,myGraph,currentBox,currentGoal, this.location, this.id);				
+					this.strategy= new StrategyBestFirst(new AStar(initialState));
+					singlesolution=SearchSingle(strategy);
+				}
+				this.subplanboard.put(subplan_key, new Subplan(init_box,currentGoal,singlesolution.solution_plan,singlesolution.agent_plan,singlesolution.action_plan));
+				subplan_key++;
+				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				System.err.println("Exception happened, solution cannot be found!!");
@@ -282,10 +300,6 @@ public class Agent {
 		this.myGraph.get(agent_key).setAgentLock(this.id, true);
 		
 		
-		//System.err.println("Myboxes now is:"+this.solution.get(index).boxes.keySet());
-		//System.err.println("MyGoals now is:"+this.solution.get(index).goals.keySet());
-		//System.err.println("currentbox now is:"+this.solution.get(index).currentBox);
-		//create the detour to finish the mission
 		boolean aware_others=true;
 		Node detourState=null;
 		if (index!=0){
@@ -319,7 +333,7 @@ public class Agent {
 
 	
 	//Single Astar logic
-	public LinkedList<Node> SearchSingle(Strategy strategy) throws IOException {
+	public Node SearchSingle(Strategy strategy) throws IOException {
 		System.err.format("Search starting with strategy Single %s.\n", strategy.toString());
 		strategy.addToFrontier(this.initialState);
 		
@@ -344,17 +358,22 @@ public class Agent {
 				
 				if(valid)
 				{
+					
+					leafNode.extractSolution();
+					this.plan.addAll(leafNode.action_plan);
+					this.agent_plan.addAll(leafNode.agent_plan);
+					this.solution.addAll(leafNode.solution_plan);
+					for(Point agent_loc:leafNode.agent_plan)
+						this.agent_start_plan.add(new int[]{this.location[0],this.location[1]});
+					
+					
 					this.location=new int[]{leafNode.agentRow,leafNode.agentCol};
 					this.myBoxes=leafNode.boxes;
 					//update box locations for next subplan
 					for (Point box_loc : this.myBoxes.keySet())
 						this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
 					
-					leafNode.extractSolution();
-					this.plan.addAll(leafNode.action_plan);
-					this.agent_plan.addAll(leafNode.agent_plan);
-					this.solution.addAll(leafNode.solution_plan);
-					return leafNode.solution_plan;
+					return leafNode;
 				}
 			}
 
@@ -425,10 +444,11 @@ public class Agent {
 							}else{
 								this.agent_plan.addLast(leafNode.agent_plan.get(detou_step));
 								this.plan.addLast(leafNode.action_plan.get(detou_step));
-								this.solution.addLast(leafNode.solution_plan.get(detou_step));								
+								this.solution.addLast(leafNode.solution_plan.get(detou_step));	
+								this.agent_start_plan.add(new int[]{this.location[0],this.location[1]});
 							}
 						}
-						//System.err.println("Changed path:"+this.agent_plan);
+						System.err.println("Changed path:"+this.plan);
 						
 						//TEST LOGIC: abandoned old unavalibble steps.
 						int tmp_plan_length=this.agent_plan.size();
@@ -440,7 +460,7 @@ public class Agent {
 						}
 						
 						
-						//System.err.println("Cleaned path:"+this.plan);
+						System.err.println("Cleaned path:"+this.plan);
 						return leafNode.solution_plan;
 					}
 				}
@@ -481,16 +501,21 @@ public class Agent {
 					
 					if(valid)
 					{
+						
+						leafNode.extractSolution();
+						this.plan.addAll(leafNode.action_plan);
+						this.agent_plan.addAll(leafNode.agent_plan);
+						this.solution.addAll(leafNode.solution_plan);
+						for(Point agent_loc:leafNode.agent_plan)
+							this.agent_start_plan.add(new int[]{this.location[0],this.location[1]});						
+						
+						
 						this.location=new int[]{leafNode.agentRow,leafNode.agentCol};
 						this.myBoxes=leafNode.boxes;
 						//update box locations for next subplan
 						for (Point box_loc : this.myBoxes.keySet())
 							this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
 						
-						leafNode.extractSolution();
-						this.plan.addAll(leafNode.action_plan);
-						this.agent_plan.addAll(leafNode.agent_plan);
-						this.solution.addAll(leafNode.solution_plan);
 						return leafNode.solution_plan;
 					}
 				}
