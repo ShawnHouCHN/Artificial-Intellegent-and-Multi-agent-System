@@ -26,6 +26,7 @@ public class RandomWalkClient {
 	public HashMap<Integer,Vertex> initial_graph=new HashMap<Integer,Vertex>();
 	public static boolean[][] all_walls=null;
 	boolean[][] all_frees=null;
+	boolean[][] real_frees=null;
 	public static Grid initial_level_grid=null; //this is the grid to save all distance between any pair of locations 
 		
 	public List<String> conflicts = null;
@@ -46,7 +47,7 @@ public class RandomWalkClient {
 		int[] dimension=this.getLevelDimension(in);
 		all_walls = new boolean[dimension[0]][dimension[1]];
 		all_frees = new boolean[dimension[0]][dimension[1]]; //pesudo free cell, everywhere other than walls
-
+		real_frees= new boolean[dimension[0]][dimension[1]];
 		
 		/*****************************Read In the Level Layout************************************/
 		// Read lines specifying colors
@@ -110,6 +111,7 @@ public class RandomWalkClient {
 					all_frees[lineN][i] = true;
 				}else if (id == ' ') {
 					all_frees[lineN][i] = true;
+					real_frees[lineN][i] = true;
 				}else{
 					System.err.println("Error, read invalid level character: " + (int) i);
 					System.exit(1);
@@ -133,42 +135,61 @@ public class RandomWalkClient {
 		
 		
 		
-		/*****************************Create Plan For Each Legal Agent***********************************/
-		for (Character agent_id : all_agents.keySet()){
-			Agent a_agent=all_agents.get(agent_id);
-			int[] init_agent_loc=a_agent.location;
-			
-			a_agent.setInitialGraph(this.initial_graph);
-			
-			a_agent.setInitialWalls(all_walls);
-			
-			a_agent.findMyBoxes(all_boxes,color_agents);
-			//a_agent.printMyBoxes();
-			a_agent.findMyGoals(all_goals);
 
+		
+		//SA case
+		if(all_agents.size()==1){
+			Agent the_agent=all_agents.get("0".charAt(0));
+			the_agent.setInitialGraph(this.initial_graph);
+			
+			the_agent.setInitialWalls(all_walls);
+			
+			the_agent.findAllBoxesGoals(all_boxes,all_goals);
+			System.err.println("SA Successful Create plan for agent "+the_agent.id+ ": with length="+the_agent.createInitSAPlan());
 		}
 		
-		for (Character agent_id : all_agents.keySet()){
-			Agent a_agent=all_agents.get(agent_id);
-			System.err.println("Successful Create plan for agent "+a_agent.id+ ": with length="+a_agent.createInitPlan());
-			System.err.println("Location of agent:"+a_agent.id+ " along the plan is:"+a_agent.subplanboard.values().toString());
+		else{
+		//MA case
+			/*****************************Create Plan For Each Legal Agent***********************************/
+			for (Character agent_id : all_agents.keySet()){
+				Agent a_agent=all_agents.get(agent_id);
+				int[] init_agent_loc=a_agent.location;
+				
+				a_agent.setInitialGraph(this.initial_graph);
+				
+				a_agent.setInitialWalls(all_walls);
+				
+				a_agent.findMyBoxes(all_boxes,color_agents);
+				//a_agent.printMyBoxes();
+				a_agent.findMyGoals(all_goals);
+
+			}			
 			
-			ranked_all_agents.add(a_agent);	
+			for (Character agent_id : all_agents.keySet()){
+				Agent a_agent=all_agents.get(agent_id);
+				System.err.println("MA Successful Create plan for agent "+a_agent.id+ ": with length="+a_agent.createInitPlan());
+				System.err.println("Location of agent:"+a_agent.id+ " along the plan is:"+a_agent.subplanboard.values().toString());
+				
+				ranked_all_agents.add(a_agent);	
+				
+			}
 			
-		}
-		
-		/*************************************************************************************************/
-		
-		
+			/*************************************************************************************************/
+			
+			
 		/*****************************Detect Conflicts among agents' plans********************************/
+		System.err.println("Start resolving conflicts!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		resolveConflicts();
+		/*************************************************************************************************/
+		}
+		
 		//Test
 		for (Character agent_id : all_agents.keySet()){
 			Agent a_agent=all_agents.get(agent_id);
 			//System.err.println("Successful Create plan for agent "+a_agent.id+ ": with length="+a_agent.createInitPlan());
-			System.err.println("Resolved Location of agent:"+a_agent.id+ " along the plan is:"+a_agent.plan);
+			System.err.println("Resolved Location of agent:"+a_agent.id+ " init:"+a_agent.init_location[0]+","+a_agent.init_location[1]+" along the plan is:"+a_agent.plan);
 		}		
-		/*************************************************************************************************/
+		
 	
 	}
 	
@@ -190,21 +211,26 @@ public class RandomWalkClient {
 				
 				else{			
 					int i=0; //iterate through every other subject agent, make sure resolve the conflict when they enter lightest way.
+
 					while(i < subject_agent.plan.size() && subject_agent.plan.get(i).actType!=type.NoOp){
 						
 						//get some current details (box, engaged box, goal,agent location)
 						Point subject_agent_loc=subject_agent.agent_plan.get(i);
 						Box subject_engaged_box=subject_agent.solution.get(i).engagedBox;
+						HashMap<Point,Box> subject_boxes=subject_agent.solution.get(i).boxes;
 						//Goal subject_curr_goal=subject_agent.solution.get(i).currentGoal;
-						
+//						
+//						if(isBoxBlockQuarantineZone(lightest_agent,subject_agent,i)){
+//							System.err.println("Agent :"+lightest_agent.id+" Hit a box");
+//						}
 					
 						//if subject agent with/without box enters quarantine zone.
 						if(isInQuarantineZone(lightest_agent,subject_agent_loc,subject_engaged_box, i)){	
 							
-							System.err.println("Agent :"+subject_agent.id+" enters quarantine zone of "+lightest_agent.id+" at index:"+i+" at location: "+subject_agent.agent_plan.get(i).toString());
+							System.err.println("Agent :"+subject_agent.id+" enters quarantine zone of lightest agent "+lightest_agent.id+" at index:"+i+" at location: "+subject_agent.agent_plan.get(i).toString());
 							
 							if(isGoalBlockQuarantineZone(lightest_agent,subject_agent, i)){
-								
+								System.err.println("It is a blocking goal! stop going:");
 								int waiting_time=lightest_agent.plan.size();
 								for(int wait=0;wait<waiting_time;wait++){
 									subject_agent.plan.add(i, new Command());							
@@ -223,17 +249,27 @@ public class RandomWalkClient {
 							else{		
 								
 								LinkedList<Node> singlesolution=subject_agent.createDetourPlan(lightest_agent, i);								
+								
 								//if there is no detour
-								if(singlesolution==null || singlesolution.size()==0){
-									
+								if(singlesolution==null || singlesolution.size()==0){									
 									//the lightest box so far will block another subject's way at this step of that subject, so the lightest agent should halt the execution. 
+									int light_enter=0;
+									
+									//know when lightest going into this subject qurantine zone 
+									for(int j=0;j<=i;j++)
+										if(isInQuarantineZone(subject_agent,lightest_agent.agent_plan.get(j),lightest_agent.solution.get(j).engagedBox, j)){
+											light_enter=j;	
+											break;
+										}
+									
 									int waiting_time=subject_agent.plan.size();
 									for(int wait=0;wait<waiting_time;wait++){
-										lightest_agent.plan.add(i, new Command());							
-										lightest_agent.agent_plan.add(i,new Point(lightest_agent.init_location[0],lightest_agent.init_location[1]));
-										lightest_agent.solution.add(i,lightest_agent.initialState);										
-									}	
-									System.err.println("Now the lighest agent"+lightest_agent.id+" plan is:"+lightest_agent.plan);
+										lightest_agent.plan.add(light_enter, new Command());							
+										lightest_agent.agent_plan.add(light_enter,lightest_agent.agent_plan.get(light_enter));
+										lightest_agent.solution.add(light_enter,lightest_agent.solution.get(light_enter));										
+									}
+									System.err.println("It is not a valid lightest agent! find next:");
+									//System.err.println("Now the lighest agent"+lightest_agent.id+" plan is:"+lightest_agent.plan);
 									break;
 								}
 								
@@ -256,6 +292,7 @@ public class RandomWalkClient {
 	
 	
 	public boolean isInOccupiedZone(Agent lightest_agent, Agent subject_agent, int index){
+		HashMap<Point, Box> lightest_last_boxes;
 		HashMap<Point, Box> lightest_agent_boxes;
 		HashMap<Point, Box> lightest_next_boxes;
 		HashMap<Point, Goal> lightest_agent_goals;
@@ -265,38 +302,69 @@ public class RandomWalkClient {
 		Box subject_agent_engaged_box=null;
 		Point subject_engaged_box_loc=null;
 		Point lightest_engaged_box_loc=null;
-		Point lightest_agent_loc=null, lightest_next_loc=null;
-		Point subject_agent_loc=null, subject_next_loc=null;
+		Point lightest_last_loc=null, lightest_agent_loc=null, lightest_next_loc=null;
+		Point subject_last_loc=null, subject_agent_loc=null, subject_next_loc=null;
 		
 		if(index>=lightest_agent.solution.size()-1){
+			lightest_last_boxes=lightest_agent.solution.getLast().boxes;
 			lightest_agent_boxes=lightest_agent.solution.getLast().boxes;
 			lightest_next_boxes=lightest_agent.solution.getLast().boxes;
 			lightest_agent_goals=lightest_agent.solution.getLast().goals;
 			lightest_next_goals=lightest_agent.solution.getLast().goals;
 //			lightest_agent_engaged_box=lightest_agent.solution.getLast().engagedBox;
 			lightest_agent_loc=lightest_agent.agent_plan.getLast();
-//			lightest_next_loc=lightest_agent.agent_plan.getLast();
+			lightest_next_loc=lightest_agent.agent_plan.getLast();
+			lightest_last_loc=lightest_agent.agent_plan.getLast();
 			
-		}else{
+		}
+		else if(index==0){
 			lightest_agent_boxes=lightest_agent.solution.get(index).boxes;
+			lightest_last_boxes=lightest_agent.myInitBoxes;
 			lightest_next_boxes=lightest_agent.solution.get(index+1).boxes;
 			lightest_agent_goals=lightest_agent.solution.get(index).goals;
 			lightest_next_goals=lightest_agent.solution.get(index+1).goals;
 //			lightest_agent_engaged_box=lightest_agent.solution.get(index).engagedBox;
 			lightest_agent_loc=lightest_agent.agent_plan.get(index);
-//			lightest_next_loc=lightest_agent.agent_plan.get(index+1);
+			lightest_next_loc=lightest_agent.agent_plan.get(index+1);
+			lightest_last_loc=new Point(lightest_agent.init_location[0],lightest_agent.init_location[1]);
+		}
+		else{
+			lightest_last_boxes=lightest_agent.solution.get(index-1).boxes;
+			lightest_agent_boxes=lightest_agent.solution.get(index).boxes;
+			lightest_next_boxes=lightest_agent.solution.get(index+1).boxes;
+			lightest_agent_goals=lightest_agent.solution.get(index).goals;
+			lightest_next_goals=lightest_agent.solution.get(index+1).goals;
+//			lightest_agent_engaged_box=lightest_agent.solution.get(index).engagedBox;
+			lightest_last_loc=lightest_agent.agent_plan.get(index-1);
+			lightest_agent_loc=lightest_agent.agent_plan.get(index);
+			lightest_next_loc=lightest_agent.agent_plan.get(index+1);
 		}
 		
 		subject_agent_engaged_box=subject_agent.solution.get(index).engagedBox;
-		subject_agent_loc=subject_agent.agent_plan.get(index);
-//		subject_next_loc=lightest_agent.agent_plan.get(index+1);
+		
+		
+		if(index>=subject_agent.agent_plan.size()-1){
+			subject_agent_loc=subject_agent.agent_plan.getLast();
+			subject_last_loc=subject_agent.agent_plan.getLast();
+			subject_next_loc=subject_agent.agent_plan.getLast();
+		}
+		if(index==0){
+			subject_agent_loc=subject_agent.agent_plan.get(index);
+			subject_last_loc=new Point(subject_agent.init_location[0], subject_agent.init_location[1]);
+			subject_next_loc=subject_agent.agent_plan.get(index+1);
+		}
+		else{
+			subject_agent_loc=subject_agent.agent_plan.get(index);
+			subject_last_loc=subject_agent.agent_plan.get(index-1);
+			//subject_next_loc=subject_agent.agent_plan.get(index+1);
+		}
+		
 		if(subject_agent_engaged_box!=null)
 			subject_engaged_box_loc=new Point(subject_agent_engaged_box.location[0], subject_agent_engaged_box.location[1]);	
-//		if(lightest_agent_engaged_box!=null)
-//			lightest_engaged_box_loc=new Point(lightest_agent_engaged_box.location[0], lightest_agent_engaged_box.location[1]);
-//		
-		System.err.println("Subject agent:"+ subject_agent.id+ ","+subject_agent_loc+" engagedbox:"+subject_engaged_box_loc+" lightest agent: "+lightest_agent.id+" "+lightest_agent_loc+" engagedbox:"+lightest_engaged_box_loc);
-		
+
+		//System.err.println("Subject agent:"+ subject_agent.id+ ","+subject_agent_loc+" engagedbox:"+subject_engaged_box_loc+" lightest agent: "+lightest_agent.id+" "+lightest_agent_loc+" engagedbox:"+lightest_engaged_box_loc);
+		//System.err.println("Check:"+subject_last_loc+subject_agent_loc+subject_next_loc+"------"+lightest_last_loc+lightest_agent_loc+lightest_next_loc);
+		//System.err.println("Subject agent:"+subject_agent.id+" at:"+subject_agent.agent_plan.get(index)+" Lightest agent:"+lightest_agent.id+" at:"+lightest_agent.agent_plan.get(index));
 		if(!lightest_agent_goals.keySet().contains(subject_agent_loc) && 
 		   !lightest_agent_goals.keySet().contains(subject_engaged_box_loc) && 
 		   !lightest_agent_boxes.keySet().contains(subject_agent_loc) && 
@@ -304,14 +372,16 @@ public class RandomWalkClient {
 		   !lightest_next_goals.keySet().contains(subject_agent_loc) &&
 		   !lightest_next_goals.keySet().contains(subject_engaged_box_loc) &&
 		   !lightest_next_boxes.keySet().contains(subject_agent_loc) &&
-		   !lightest_next_boxes.keySet().contains(subject_engaged_box_loc))
+		   !lightest_next_boxes.keySet().contains(subject_engaged_box_loc) &&
+		   !lightest_last_boxes.keySet().contains(subject_agent_loc) &&
+		   !lightest_last_boxes.keySet().contains(subject_engaged_box_loc) &&
+		   !subject_agent_loc.equals(lightest_agent_loc) &&
+		   !subject_agent_loc.equals(lightest_next_loc) &&
+		   !subject_last_loc.equals(lightest_agent_loc))
 			return false;
-
-//		else if((lightest_agent_goals.keySet().contains(subject_agent_loc) &&
-//				!lightest_agent_boxes.keySet().contains(subject_agent_loc)) ||
-//				(lightest_agent_goals.keySet().contains(subject_engaged_box_loc) &&
-//				!lightest_agent_boxes.keySet().contains(subject_engaged_box_loc)))
-//			return false;
+		
+		
+		
 		else 
 			return true;
 		
@@ -347,6 +417,11 @@ public class RandomWalkClient {
 		}
 	}
 	
+	public boolean isBoxBlockQuarantineZone(Agent lightest_agent, Agent subject_agent, int index){
+		return subject_agent.solution.get(index).boxes.containsKey(lightest_agent.agent_plan.get(index+1));
+	}
+	
+	
 	public boolean isGoalBlockQuarantineZone(Agent lightest_agent, Agent subject_agent, int index){
 		Goal subject_curr_goal=subject_agent.solution.get(index).currentGoal;
 		Goal lightest_curr_goal;
@@ -376,86 +451,7 @@ public class RandomWalkClient {
 		
 	}
 	
-	public void detectConflicts() {
-
-		for (Entry<Character, Agent> agentA: all_agents.entrySet()){
-			Agent agent_one=agentA.getValue();
-			
-			for (Entry<Character, Agent> agentB: all_agents.entrySet()){
-				Agent agent_two = agentB.getValue();
-				
-				if(agent_one.id >= agent_two.id)
-					continue;
-				
-				try {
-					int i=0;
-					
-					while(i < Math.max(agent_one.agent_plan.size(), agent_two.agent_plan.size())) {
-						//agent one = agent with smaller id / agent two = agent with greater id.
-						Point agentone_loc=agent_one.agent_plan.get(i);
-						Point agentone_next_loc=agent_one.agent_plan.get(i+1);
-						Point agenttwo_loc=agent_two.agent_plan.get(i); 
-						Point agenttwo_next_loc=agent_two.agent_plan.get(i+1);
-						HashMap<Point, Box> agentone_iboxes=agent_one.solution.get(i).boxes;
-						HashMap<Point, Box> agenttwo_iboxes=agent_two.solution.get(i).boxes;
-						Box agentone_currentbox=agent_one.solution.get(i).currentBox;
-						Box agenttwo_currentbox=agent_two.solution.get(i).currentBox;
-						Command agentone_command=agent_one.solution.get(i).action;
-						Command agenttwo_command=agent_two.solution.get(i).action;
-						//Case 1: both agents go to same loc/ or an agent next move walks into another agent current place
-						if((agentone_loc.equals(agenttwo_loc) || agentone_loc.equals(agenttwo_next_loc) || agentone_next_loc.equals(agenttwo_loc))) {
-							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: " + agent_one.id + " & " + agent_two.id + ", @ " + agent_two.agent_plan.get(i) + " AT INDEX " + i);												
-							int waiting_time=noopAndWaitConflict(agent_one, agent_two, i);					
-							
-							//if waiting time == MAX THRESHOLD, it means one agent has terminated. do replan to put that agent to a spare location.
-							//this feed
-							
-							
-							//else
-							// Add NoOp
-							for(int wait=0;wait<3;wait++){
-								agent_one.plan.add(i, new Command());
-								agent_one.agent_plan.add(i,agent_one.agent_plan.get(i));
-								agent_one.solution.add(i,agent_one.solution.get(i));
-							}
-							
-							//########
-							
-							
-							
-							System.err.println("AGENT " + agent_one.id + ", NEW PLAN (Two agents, same locs): " + agent_one.plan.toString() + "\n");
-							
-						}
-						
-						
-//						//Case 4, agent two goes to a stationary box belonged to agent one
-//						else if(agentone_iboxes.containsKey(agenttwo_loc) || agentone_iboxes.containsKey(agenttwo_next_loc)){
-//							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: "  + agent_two.id + " runs into " + agent_one.id+ " Boxes " + agent_one.agent_plan.get(i) + " AT INDEX " + i);
-//						
-//							//wait and see for a moment and then detour for agent two
-//						
-//						}
-//						
-//						//Case 5, agent one goes to a stationary box belonged to agent two
-//						else if(agenttwo_iboxes.containsKey(agentone_loc) || agenttwo_iboxes.containsKey(agentone_next_loc)){
-//							System.err.println("CONFLICT DETECTED BETWEEN AGENTS: "  + agent_one.id + " runs into " + agent_two.id+ " Boxes " + agent_two.agent_plan.get(i) + " AT INDEX " + i);
-//						}
-						i++;
-						
-					} 
-					
-				}catch(Exception e) {
-						// OUT OF BOUNDS
-						System.err.println("OUT OF BOUNDS");
-					}
-					
-				}
-				
-			}
-		
-		
-	}
-
+	
 	
 	//recursive code checking whether there is a conflict in the further steps
 	public int noopAndWaitConflict(Agent defendant, Agent complainant, int step_index){
@@ -469,8 +465,6 @@ public class RandomWalkClient {
 		
 		return waiting_length;
 	}
-	
-	
 	
 	
 	

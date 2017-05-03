@@ -33,6 +33,7 @@ public class Node {
 	public Node parent;
 	public Command action;
 	public boolean wall_detect;
+	public boolean sa_mode;
 	
 	public LinkedList<Point> agent_plan;
 	public LinkedList<Command> action_plan;
@@ -62,13 +63,14 @@ public class Node {
 			this.engagedBox=parent.engagedBox;
 			this.wall_detect=parent.wall_detect;
 			this.agent_id=parent.agent_id;
+			this.sa_mode=parent.sa_mode;
 		}
 
 	}
 	
 	
 
-	public Node(Boolean other_walls, Node parent, boolean[][] walls, HashMap<Point,Box> boxes,HashMap<Point,Goal> goals, HashMap<Integer,Vertex> graph, Box currentBox, Goal currentGoal, int[] agent_loc, char agent_id ) {
+	public Node(Boolean other_walls,Boolean sa_mode, Node parent, boolean[][] walls, HashMap<Point,Box> boxes,HashMap<Point,Goal> goals, HashMap<Integer,Vertex> graph, Box currentBox, Goal currentGoal, int[] agent_loc, char agent_id ) {
 		if (parent == null) {
 			this.g = 0;
 		} else {
@@ -87,6 +89,7 @@ public class Node {
 		this.engagedBox=null; //no engaged box at beginning....
 		this.currentGoal=currentGoal;
 		this.wall_detect=other_walls;
+		this.sa_mode=sa_mode;
 		
 	}
 	
@@ -188,6 +191,8 @@ public class Node {
 						//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
 						if(n.wall_detect && n.graph.get(n.engagedBox.hashCode()).getAgentLock(this.agent_id))
 							n.g=n.g+Grid.LOCK_THRESHOLD;
+						if(n.sa_mode && n.goals.keySet().contains(nagent_point))
+							n.g=n.g+Grid.SA_GOAL_REACH_COST;
 					}
 				}
 			} else if (c.actType == type.Pull) {
@@ -212,6 +217,8 @@ public class Node {
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{oagent_point.x,oagent_point.y});
 						if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
 							n.g=n.g+Grid.LOCK_THRESHOLD;
+						if(n.sa_mode && n.goals.keySet().contains(nbox_point))
+							n.g=n.g+Grid.SA_GOAL_REACH_COST;
 					}
 				}
 			}
@@ -255,6 +262,12 @@ public class Node {
 			int result = 1;
 			result = prime * result + this.agentCol;
 			result = prime * result + this.agentRow;
+			Iterator<Entry<Point, Box>> box_it = this.boxes.entrySet().iterator();
+			while(box_it.hasNext()){
+				Map.Entry<Point,Box> box = (Map.Entry<Point,Box>)box_it.next();
+				result= prime * result + box.getKey().hashCode();
+				result= prime * result + Character.hashCode(box.getValue().id);
+			}
 			result = prime * result + this.boxes.keySet().hashCode();
 			result = prime * result + this.goals.keySet().hashCode();
 			result = prime * result + Arrays.deepHashCode(this.walls);

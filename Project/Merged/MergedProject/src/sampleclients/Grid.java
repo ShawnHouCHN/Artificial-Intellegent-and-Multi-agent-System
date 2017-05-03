@@ -13,6 +13,7 @@ import java.util.Queue;
 public class Grid {
 	
 	public static int LOCK_THRESHOLD = 10000;
+	public static int SA_GOAL_REACH_COST=5;
 	public HashMap<Integer, Vertex> graph;
 	public static HashMap<Integer,Integer> matrix;
 	public List<Integer> sortedkeys;
@@ -42,6 +43,17 @@ public class Grid {
 		return dis;
 	}
 	
+	
+	public static int getSABFSPesudoDistance(int[] source, int[] target,HashMap<Integer,Vertex> myGraph){
+		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
+		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
+		int unionhash=Grid.pairSourceTarget(hash1, hash2);
+		int dis=BFSDistance(hash1,hash2,myGraph);
+		return dis;		
+	}
+	
+	
+	
 	public static int getBFSPesudoDistance(int[] source, int[] target,HashMap<Integer,Vertex> myGraph, char agent_id){
 		int hash1 = ((source[0] + source[1])*(source[0] + source[1] + 1))/2 + source[1];
 		int hash2 = ((target[0] + target[1])*(target[0] + target[1] + 1))/2 + target[1];
@@ -65,7 +77,9 @@ public class Grid {
 		}
 	}
 	
-	public int BFSDistance(int source, int target, HashMap<Integer, Vertex> agent_graph){
+	
+	
+	public static int BFSDistance(int source, int target, HashMap<Integer, Vertex> agent_graph){
 		ArrayDeque<Integer> frontier =new ArrayDeque<Integer>();
 		HashSet<Integer> closedset = new HashSet<Integer>();
 		HashMap<Integer,Vertex> graph= new HashMap<Integer,Vertex>(agent_graph);
