@@ -60,7 +60,7 @@ public class Node {
 			this.graph = parent.graph;
 			this.currentGoal=parent.currentGoal;
 			this.currentBox=parent.currentBox;
-			this.engagedBox=parent.engagedBox;
+			this.engagedBox=parent.currentBox;
 			this.wall_detect=parent.wall_detect;
 			this.agent_id=parent.agent_id;
 			this.sa_mode=parent.sa_mode;
@@ -86,7 +86,7 @@ public class Node {
 		this.agentRow = agent_loc[0];
 		this.agentCol = agent_loc[1];
 		this.currentBox=currentBox;
-		this.engagedBox=null; //no engaged box at beginning....
+		this.engagedBox=currentBox; //no engaged box at beginning....
 		this.currentGoal=currentGoal;
 		this.wall_detect=other_walls;
 		this.sa_mode=sa_mode;
@@ -137,6 +137,20 @@ public class Node {
 			return false;
 	}	
 	
+	public boolean isSingleRescueGoalState(Agent refer_agent) {
+		if (Arrays.equals(this.currentBox.location,this.currentGoal.location) && this.g<Grid.LOCK_THRESHOLD && !refer_agent.agent_plan.contains(new Point(this.agentRow, this.agentCol)) && !refer_agent.myGoals.keySet().contains(new Point(this.agentRow, this.agentCol)))
+			return true;
+		else
+			return false;		
+	}
+	
+	public boolean isSingleSelfRescueGoalState(Agent refer_agent){
+		if (Arrays.equals(this.agent_loc,this.currentGoal.location) && this.g<Grid.LOCK_THRESHOLD && !refer_agent.agent_plan.contains(new Point(this.agentRow, this.agentCol)) && !refer_agent.myGoals.keySet().contains(new Point(this.agentRow, this.agentCol)))
+			return true;
+		else
+			return false;			
+	}
+	
 	//updated get expanded nodes;
 	public ArrayList<Node> getExpandedNodes() {
 		ArrayList<Node> expandedNodes = new ArrayList<Node>(Command.every.length);
@@ -160,7 +174,7 @@ public class Node {
 					n.boxes = this.boxes;
 					expandedNodes.add(n);
 					n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{this.currentBox.location[0],this.currentBox.location[1]});
-					n.engagedBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{this.currentBox.location[0],this.currentBox.location[1]});
+					n.engagedBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{this.engagedBox.location[0],this.engagedBox.location[1]});
 					//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
 					if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
 						n.g=n.g+Grid.LOCK_THRESHOLD;
@@ -185,14 +199,33 @@ public class Node {
 						n.boxes.remove(nagent_point);
 						expandedNodes.add(n);
 						n.engagedBox=new Box(this.boxes.get(nagent_point).id,this.boxes.get(nagent_point).color,new int[]{nbox_point.x,nbox_point.y});
+						if(this.boxes.get(nagent_point).zombie){
+							n.boxes.get(nbox_point).zombie=true;
+							n.engagedBox.zombie=true;
+						}
 						//extra logic update currentbox location
 						if(nagent_point.x==this.currentBox.location[0] && nagent_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{nbox_point.x,nbox_point.y});
 						//if n's agent ot n's currentbox is tried to move to locked place then the g value should be enlarged
 						if(n.wall_detect && n.graph.get(n.engagedBox.hashCode()).getAgentLock(this.agent_id))
 							n.g=n.g+Grid.LOCK_THRESHOLD;
-						if(n.sa_mode && n.goals.keySet().contains(nagent_point))
+						if(n.sa_mode && n.goals.keySet().contains(nagent_point) && !n.engagedBox.equals(n.currentBox) && !n.engagedBox.zombie)
 							n.g=n.g+Grid.SA_GOAL_REACH_COST;
+						if(n.sa_mode && !n.currentBox.equals(n.engagedBox) && !n.engagedBox.zombie)
+							n.g=n.g+Grid.SA_MOVE_OTHER_COST;
+						if(n.sa_mode && n.engagedBox.zombie){ //TEST
+							this.graph.get(this.boxes.get(nagent_point).hashCode()).setLock(true);
+							n.graph.get(n.boxes.get(nbox_point).hashCode()).setLock(true);
+							if(Grid.getSABFSPesudoDistance(this.agent_loc, this.currentGoal.location, this.graph)>=Grid.LOCK_THRESHOLD && Grid.getSABFSPesudoDistance(n.agent_loc, n.currentGoal.location, n.graph)<Grid.LOCK_THRESHOLD){
+								n.g=n.g-Grid.SA_MOVE_OTHER_COST;
+							}
+							this.graph.get(this.boxes.get(nagent_point).hashCode()).setLock(false);
+							n.graph.get(n.boxes.get(nbox_point).hashCode()).setLock(false);
+						}
+//						if(n.sa_mode && n.engagedBox.zombie){ 
+//							n.g=n.g-5;
+//						}
+//							n.g=n.g+Grid.SA_MOVE_OTHER_COST;
 					}
 				}
 			} else if (c.actType == type.Pull) {
@@ -212,13 +245,32 @@ public class Node {
 						n.boxes.remove(nbox_point);
 						expandedNodes.add(n);
 						n.engagedBox=new Box(this.boxes.get(nbox_point).id,this.boxes.get(nbox_point).color,new int[]{oagent_point.x,oagent_point.y});
+						
+						if(this.boxes.get(nbox_point).zombie){
+							n.boxes.get(oagent_point).zombie=true;
+							n.engagedBox.zombie=true;
+						}
 						//extra logic update currentbox location
 						if(nbox_point.x==this.currentBox.location[0] && nbox_point.y==this.currentBox.location[1])
 							n.currentBox=new Box(this.currentBox.id, this.currentBox.color,new int[]{oagent_point.x,oagent_point.y});
 						if(n.wall_detect && n.graph.get(((n.agent_loc[0] + n.agent_loc[1])*(n.agent_loc[0] + n.agent_loc[1] + 1))/2 + n.agent_loc[1]).getAgentLock(this.agent_id))
 							n.g=n.g+Grid.LOCK_THRESHOLD;
-						if(n.sa_mode && n.goals.keySet().contains(nbox_point))
+						if(n.sa_mode && n.goals.keySet().contains(nbox_point) && !n.engagedBox.equals(n.currentBox) && !n.engagedBox.zombie)
 							n.g=n.g+Grid.SA_GOAL_REACH_COST;
+						if(n.sa_mode && !n.currentBox.equals(n.engagedBox) && !n.engagedBox.zombie)
+							n.g=n.g+Grid.SA_MOVE_OTHER_COST;
+						if(n.sa_mode && n.engagedBox.zombie){ //TEST
+							this.graph.get(this.boxes.get(nbox_point).hashCode()).setLock(true);
+							n.graph.get(n.boxes.get(oagent_point).hashCode()).setLock(true);
+							if(Grid.getSABFSPesudoDistance(this.agent_loc, this.currentGoal.location, this.graph)>=Grid.LOCK_THRESHOLD && Grid.getSABFSPesudoDistance(n.agent_loc, n.currentGoal.location, n.graph)<Grid.LOCK_THRESHOLD){
+								n.g=n.g-Grid.SA_MOVE_OTHER_COST;
+							}
+							this.graph.get(this.boxes.get(nbox_point).hashCode()).setLock(false);
+							n.graph.get(n.boxes.get(oagent_point).hashCode()).setLock(false);
+						}
+//						if(n.sa_mode && n.engagedBox.zombie){ 
+//							n.g=n.g-5;
+//						}
 					}
 				}
 			}
@@ -249,7 +301,9 @@ public class Node {
 			this.solution_plan.addFirst(n);
 			this.action_plan.addFirst(n.action);
 			this.agent_plan.addFirst(new Point(n.agentRow, n.agentCol));
+			//System.err.println("THe engaged box is:"+n.engagedBox);
 			n = n.parent;
+			
 		}
 		return solution_plan;
 	}

@@ -14,6 +14,7 @@ public class Grid {
 	
 	public static int LOCK_THRESHOLD = 10000;
 	public static int SA_GOAL_REACH_COST=5;
+	public static int SA_MOVE_OTHER_COST=5;
 	public HashMap<Integer, Vertex> graph;
 	public static HashMap<Integer,Integer> matrix;
 	public List<Integer> sortedkeys;
