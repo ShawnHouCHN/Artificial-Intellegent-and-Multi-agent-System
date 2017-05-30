@@ -153,7 +153,7 @@ public class RandomWalkClient {
 //					//System.err.println("Zombie "+mybox.id+" loc:"+mybox);
 //			}
 			the_agent.createInitSAPlan();
-			////System.err.println("SA Successful Create plan for agent "+the_agent.id+ ": with length="+the_agent.createInitSAPlan());
+			System.err.println("SA Successful Create plan for agent "+the_agent.id+ ": with length="+the_agent.createInitSAPlan());
 		}
 		
 		else{
@@ -344,17 +344,17 @@ public class RandomWalkClient {
 								}
 								
 								
-//								else if(isInOtherAgent(subject_agent,lightest_agent,k)){
-//									//System.err.println(lightest_agent.id+" Run into other agent "+subject_agent.id+" at index:"+k+" at "+subject_agent.agent_plan.get(k));
-//									int waiting_time=lightest_agent.plan.size()-k+1;
-//									for(int wait=0;wait<waiting_time;wait++){
-//										subject_agent.plan.add(k-1, new Command());							
-//										subject_agent.agent_plan.add(k-1,subject_agent.agent_plan.get(k-1));
-//										subject_agent.solution.add(k-1,subject_agent.solution.get(k-1));	
-//										subject_agent.agent_start_plan.add(k-1,subject_agent.agent_start_plan.get(k-1));	
-//										subject_agent.agent_rescue_plan.add(k-1,subject_agent.agent_rescue_plan.get(k-1));
-//									}
-//								}
+								else if(isInOtherAgent(subject_agent,lightest_agent,k)){
+									System.err.println(lightest_agent.id+" Run into subject agent "+subject_agent.id+" at index:"+k+" at "+subject_agent.agent_plan.get(k));
+									int waiting_time=lightest_agent.plan.size()-k+1;
+									for(int wait=0;wait<waiting_time;wait++){
+										lightest_agent.plan.add(k-1, new Command());							
+										lightest_agent.agent_plan.add(k-1,lightest_agent.agent_plan.get(k-1));
+										lightest_agent.solution.add(k-1,lightest_agent.solution.get(k-1));	
+										lightest_agent.agent_start_plan.add(k-1,lightest_agent.agent_start_plan.get(k-1));	
+										lightest_agent.agent_rescue_plan.add(k-1,lightest_agent.agent_rescue_plan.get(k-1));
+									}
+								}
 								
 								
 							}							
@@ -1014,7 +1014,7 @@ public class RandomWalkClient {
 
 		// Disregard these for now, but read or the server stalls when its output buffer gets filled!
 		String percepts = in.readLine();
-		//System.err.println( "percepts: "+ percepts );
+		System.err.println( "percepts: "+ percepts );
 		if ( percepts == null )
 			return false;
 
@@ -1082,7 +1082,7 @@ public class RandomWalkClient {
 	public static void main( String[] args ) {
 
 		// Use stderr to print to console
-		//System.err.println( "Hello from RandomWalkClient. I am sending this using the error outputstream" );
+		System.err.println( "Hello from RandomWalkClient. I am sending this using the error outputstream" );
 		for (int i=0; i < Command.every.length;i ++){
 			//System.err.println( Command.every[i]);
 		}

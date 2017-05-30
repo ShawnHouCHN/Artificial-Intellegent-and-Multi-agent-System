@@ -257,7 +257,7 @@ public class Agent {
 			
 			findNextSafeBoxGoal(sa_mode);
 			
-			////System.err.println("Plan A: find next safe target. Agent at: "+this.location[0]+","+this.location[1]+" The box is "+currentBox.id+" "+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
+			System.err.println("Plan A: find next safe target. Agent at: "+this.location[0]+","+this.location[1]+" The box is "+currentBox.id+" "+currentBox.location[0]+","+currentBox.location[1]+"; Goal is "+currentGoal.location[0]+","+currentGoal.location[1]);
 			//true == other boxes are walls / false == other boxes are free spaces
 			boolean aware_others=false;
 			boolean aware_sa=true;
@@ -841,7 +841,6 @@ public class Agent {
 	public Node SearchSingle(Strategy strategy) throws IOException {
 		System.err.format("Search starting with strategy Single %s.\n", strategy.toString());
 		strategy.addToFrontier(this.initialState);
-		
 		int iterations = 0;
 		while (true) {
             if (iterations == 1000) {
@@ -893,7 +892,7 @@ public class Agent {
 					for (Point box_loc : this.myBoxes.keySet())
 						this.myBoxes.get(box_loc).location=new int[]{box_loc.x,box_loc.y};
 					
-					////System.err.println("Subplan is: "+leafNode.agent_plan);
+					System.err.println("Strategy status is: "+strategy.searchStatus());
 					return leafNode;
 				}
 			}
@@ -1209,6 +1208,13 @@ public class Agent {
 			int box2goal=RandomWalkClient.initial_level_grid.getBFSDistance(a_box.location,this.currentGoal.location);
 			int box2sgoal=RandomWalkClient.initial_level_grid.getBFSDistance(a_box.location,this.secondaryGoal.location);
 			if(Character.toLowerCase(a_box.id)==this.currentGoal.id && box2goal<=currentDist ){
+				
+//				if(box2goal==currentDist && this.currentBox!=null){
+//					int box2agent=RandomWalkClient.initial_level_grid.getBFSDistance(a_box.location,this.location);
+//					int curbox2agent=RandomWalkClient.initial_level_grid.getBFSDistance(this.currentBox.location,this.location);
+//					if(box2agent>curbox2agent)
+//						continue;
+//				}
 				currentDist=box2goal;
 				this.currentBox=a_box;
 			}
